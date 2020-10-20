@@ -363,15 +363,7 @@ classdef my2DOFRobot < handle
 
         end
 
-        
-        function [pSH, pEL, pEE] = FKcalc( obj, qarr )
-        % Calculating the actual q array value     
-            pSH = zeros( 3, size( qarr, 2 ) );    
-            
-            
-            obj.forwardKinematics( 1, [ obj.L( 1 ); 0; 0] )
-            obj.forwardKinematics( 2, [ obj.L( 2 ); 0; 0] )
-        end
+
     end
 
         
