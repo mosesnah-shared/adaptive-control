@@ -20,25 +20,18 @@ c  = myColor();
 %% (--) ========================================================
 %% (1-) 2DOF Robot Simulation
 %% --- (1 - a) Parsing the txt File 
-robot = my2DOFRobot(  );  %'length', [0.294, 0.291]
+robot = my2DOFRobot( 'L',      [1,1], ...
+                     'M',      [1,1], ...
+                    'Lc', [0.5, 0.5], ...
+                     'I', [1, 1, 1; 1, 1, 1], ...
+                     'g', 9.81  );
 
-% robot.jacobian( 2,  , 'sym')
-pos = robot.forwardKinematics( 2, [ robot.L(2);0;0] );
-% robot.jacobian( 1, [ robot.L(1);0;0] )
-M = robot.getM( );      % Mass Matrix 
-C = robot.getC( );      % Coriolis Term
-G = robot.getG( );      % Gravity Matrix
-
-M_val = robot.substitute( M, 'length', [1,1], 'mass', [1,1], 'lengthCOM', [0.5, 0.5], 'inertia', [0, 0, 0.2; 0, 0, 0.2], 'gravity', 9.81  );
-C_val = robot.substitute( C, 'length', [1,1], 'mass', [1,1], 'lengthCOM', [0.5, 0.5], 'inertia', [0, 0, 0.2; 0, 0, 0.2], 'gravity', 9.81  );
-G_val = robot.substitute( G, 'length', [1,1], 'mass', [1,1], 'lengthCOM', [0.5, 0.5], 'inertia', [0, 0, 0.2; 0, 0, 0.2], 'gravity', 9.81  );
-
-%% -- (1 - b) Do the calculation\
+%% -- (1 - b) Do the calculation
 T = 10;                                                                    % Total Time of ode intergration
 
 tspan = [0, T];
-y0 = [1, 1, 0, 0];
-[tvec,y] = ode45( @(t,y) odefcn(t, y, M_val, C_val, G_val ), tspan, y0 );
+y0 = [0.1, 0.1, 0, 0];
+[tvec,y] = ode45( @(t,y) odefcn(t, y, robot.M_val, robot.C_val, robot.G_val ), tspan, y0 );
 
 
 tvec = tvec'; y = y';
@@ -51,21 +44,65 @@ tVec = tmp;
 qMat = interp1( tvec, y( 1:4, : )', tmp ); 
 % tmp = arrayfun( xd, tVec , 'UniformOutput', false); tmp = cell2mat( tmp' );
 
-q1 = qMat( :, 1 )'; q2 = qMat( :, 2 )';
-
 pSH = zeros( 3, length( tVec ) );
-pEL = zeros( 3, length( tVec ) );
-pEE = zeros( 3, length( tVec ) );
+pEL = robot.calcForwardKinematics( 1, [1;0;0], qMat(:,1:2)' );
+pEE = robot.calcForwardKinematics( 2, [1;0;0], qMat(:,1:2)' );
 
-eqEL = robot.forwardKinematics( 1, [ 1; 0; 0 ] );
-eqEE = robot.forwardKinematics( 2, [ 1; 0; 0 ] ); 
-eqEE = subs( eqEE, 'L1', 1 );
-
-pEL = double( reshape( subs( eqEL, {'q1', 'q2'}, { qMat( :, 1 ), qMat( :, 2 ) } ), length( q1 ), 3 )' );
-pEE = double( reshape( subs( eqEE, {'q1', 'q2'}, { qMat( :, 1 ), qMat( :, 2 ) } ), length( q1 ), 3 )' );
+pos = {pSH, pEL, pEE};
 
 
-%%
+stringList = [ "SH", "EL", "EE" ];                                         % 3 Upper limb markers 
+
+% Marker in order, target (1), upper limb (3, SH, EL, WR) and Whip (25) 
+sizeList   = [ 24, 24, 24 ];                        % Setting the size of each markers
+colorList  = [ c.pink; c.green; c.blue ];  % Setting the color of each markers
+
+for i = 1 : length( pos )
+   markers( i ) = myMarker( pos{ i }( 1, : ), pos{ i }( 2, :) , pos{ i }(3, : ), ...
+                                                       'name', stringList( i ) , ...
+                                                 'markersize',   sizeList( i ) , ...
+                                                'markercolor',  colorList( i, : ) );    % Defining the markers for the plot
+
+end
+
+
+ani = my3DAnimation( 0.01, markers );                                        % Input (1) Time step of sim. (2) Marker Information
+ani.connectMarkers( 1, [ "SH", "EL", "EE" ], 'linecolor', c.grey )        
+
+
+tmpLim = 2.5;
+set( ani.hAxes{ 1 }, 'XLim',   [ -tmpLim , tmpLim ] , ...                  
+                     'YLim',   [ -tmpLim , tmpLim ] , ...    
+                     'ZLim',   [ -tmpLim , tmpLim ] , ...
+                     'view',   [0, 0 ]     )           
+                                                      
+                              
+ani.run( 1, true, 'output')
+                                                                           
+
+%% Deriving the end-effector time derivative of Jacobian
+
+Jsym  = robot.jacobian( 2, [robot.L(2);0;0] );
+dJsym = diff( Jsym,  't' );
+
+tmp = subs( C_val, { 'L1',  'L2'}, { 1,1 } );
+tmp = subs(   tmp,  diff( robot.q, robot.t ), robot.dq )
+dJEEMat = arrayfun(@char, tmp, 'uniform', 0);
+
+oldS = {'q1(t)','q2(t)', 'dq1(t)','dq2(t)', 'sin'   , 'cos'};
+newS = { 'q[0]', 'q[1]',  'dq[0]', 'dq[1]', 'np.sin', 'np.cos' };
+
+
+tmp = dJEEMat;
+for i = 1 : length(oldS)
+    tmp = strrep( tmp, oldS{i}, newS{i} );
+end
+     
+%% (--) ========================================================
+%% (2-) 2DOF Robot Simulation
+%% --- (2 - a) Parsing the txt File 
+
+data = myTxtParse( 'data_log.txt' );
 
 stringList = [ "SH", "EL", "EE" ];                                         % 3 Upper limb markers 
 
@@ -73,22 +110,32 @@ stringList = [ "SH", "EL", "EE" ];                                         % 3 U
 sizeList   = [ 24, 24, 24 ];                        % Setting the size of each markers
 colorList  = [ repmat( c.pink, 3, 1) ];  % Setting the color of each markers
 
+pSH = data.geomXYZPositions(1:3, :);
+pEL = data.geomXYZPositions(4:6, :);
+pEE = data.geomXYZPositions(7:9, :);
 
-markers(1 ) = myMarker( pEE( 1, : ), pEE( 2, :) , pEE(3, : ), ...
+
+markers( 1 ) = myMarker( pEE( 1, : ), pEE( 2, :) , pEE(3, : ), ...
                                           'name', stringList( 3 ) , ...
                                     'markersize',   sizeList( 3 ) , ...
                                    'markercolor',  colorList( 3, : ) );    % Defining the markers for the plot
 
-markers(2 ) = myMarker( pEL( 1, : ), pEL( 2, :) , pEL(3, : ), ...
+markers( 2 ) = myMarker( pEL( 1, : ), pEL( 2, :) , pEL(3, : ), ...
                                           'name', stringList( 2 ) , ...
                                     'markersize',   sizeList( 2 ) , ...
                                    'markercolor',  colorList( 2, : ) );    % Defining the markers for the plot
                                
-markers(3 ) = myMarker( pSH( 1, : ), pSH( 2, :) , pSH(3, : ), ...
+markers(3  ) = myMarker( pSH( 1, : ), pSH( 2, :) , pSH(3, : ), ...
                                           'name', stringList( 1 ) , ...
                                     'markersize',   sizeList( 1 ) , ...
                                    'markercolor',  colorList( 1, : ) );    % Defining the markers for the plot
 
+markers( 4  ) = myMarker( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :) , zeros(1, length( data.desiredEEPos ) ), ...
+                                          'name', stringList( 1 ) , ...
+                                    'markersize',   sizeList( 1 ) * 0.4 , ...
+                                   'markercolor',  colorList( 1, : ) );    % Defining the markers for the plot
+                               
+                               
                                
 ani = my3DAnimation( 0.01, markers );                                        % Input (1) Time step of sim. (2) Marker Information
 ani.connectMarkers( 1, [ "SH", "EL", "EE" ], 'linecolor', c.grey )        
@@ -103,7 +150,9 @@ set( ani.hAxes{ 1 }, 'XLim',   [ -tmpLim , tmpLim ] , ...
                  
                        
 ani.run( 0.2, false, 'output')
-                                                                           
+                                                                  
+                              
+
 
 %% (-3) ODE Function Definition
 

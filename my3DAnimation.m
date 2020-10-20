@@ -435,8 +435,8 @@ classdef my3DAnimation < handle
             iidx = find( obj.isZoomed );  % Find the index that should be changed. 
             if iidx ~= 0
                 set( obj.hAxes{ iidx },  'XLim',  [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).xdata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).xdata( idx ) ] , ...         
-                                        'YLim',   [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).ydata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).ydata( idx ) ] , ...    
-                                        'ZLim',   [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).zdata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).zdata( idx ) ] )  
+                                         'YLim',   [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).ydata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).ydata( idx ) ] , ...    
+                                         'ZLim',   [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).zdata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).zdata( idx ) ] )  
             end
            
         end
