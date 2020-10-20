@@ -52,13 +52,13 @@ function r = myParser( arguments )
     
     addParameter( p,        'name', "g" + num2str( randi ( 2^20 ) ), ckc4 );  
     
-    addParameter( p,  'length'    ,  [ 0.294, 0.291 ], ckc6 );
-    addParameter( p,  'lengthCOM' ,  [ 0.129, 0.112 ], ckc6 );
-    addParameter( p,  'mass'      ,  [ 1.595, 0.869 ], ckc6 );
-    addParameter( p,  'inertia'   ,  [ 0.011917 0.011937 0.001325; 
-                                       0.004765 0.004855 0.000472], ckc7 );  % Check whether the matrix is positive definite. 
-                                                                             % The matrix is positive definite if.f the eigenvalues of the sym. part of the matrix are all postiive. 
-    addParameter( p,  'gravity'   , 9.81, ckc8 );
+    addParameter( p,  'L'  ,  [ 0.294, 0.291 ], ckc6 );
+    addParameter( p,  'Lc' ,  [ 0.129, 0.112 ], ckc6 );
+    addParameter( p,  'M'  ,  [ 1.595, 0.869 ], ckc6 );
+    addParameter( p,  'I'  ,  [ 0.011917, 0.011937, 0.001325; 
+                                0.004765, 0.004855, 0.000472], ckc7 );     % Check whether the matrix is positive definite. 
+                                                                           % The matrix is positive definite if.f the eigenvalues of the sym. part of the matrix are all postiive. 
+    addParameter( p,  'g'  , 9.81, ckc8 );
                                                                              
     parse( p, arguments{ : } )
     r = p.Results;
