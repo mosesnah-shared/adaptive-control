@@ -341,7 +341,7 @@ classdef my3DAnimation < handle
 
             for i = 1 : step : N
                 
-                obj.step( step )                                           % Run a single step of the simulation
+                obj.goto( i )                                           % Run a single step of the simulation
 
                 if isVidRecord                                             % If videoRecord is ON
                     frame = getframe( obj.hFigure );                       % Get the current frame of the figure
@@ -440,14 +440,7 @@ classdef my3DAnimation < handle
             end
            
         end
-            
-            
-        function step( obj, step )
-            %run: running a single step of the simulation
-            obj.goto( obj.simStep )
-            obj.simStep = obj.simStep + step;                               % Increment the simulation step for plot.
            
-        end
         
         function addTrackingPlots( obj, idx, plotLine )
             %addZoomWindow: Add a Zoom-in view plot of the main axes plot
@@ -507,7 +500,8 @@ classdef my3DAnimation < handle
             
             
         end
-
+        
     end
+
 end
 
