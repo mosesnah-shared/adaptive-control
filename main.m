@@ -103,6 +103,9 @@ end
 
 data = myTxtParse( 'data_log.txt' );
 
+% dEE = robot.calcForwardKinematics( 2, [1;0;0], data.desiredJointPos );
+
+
 stringList = [ "SH", "EL", "EE" ];                                         % 3 Upper limb markers 
 
 % Marker in order, target (1), upper limb (3, SH, EL, WR) and Whip (25) 
@@ -112,6 +115,7 @@ colorList  = [ c.blue; c.green; c.pink ];  % Setting the color of each markers
 pSH = data.geomXYZPositions(1:3, :);
 pEL = data.geomXYZPositions(4:6, :);
 pEE = data.geomXYZPositions(7:9, :);
+% pADD = data.geomXYZPositions(10:12, :);
 
 
 markers( 1 ) = myMarker( pEE( 1, : ), pEE( 2, :) , pEE(3, : ), ...
@@ -128,14 +132,28 @@ markers(3  ) = myMarker( pSH( 1, : ), pSH( 2, :) , pSH(3, : ), ...
                                           'name', stringList( 1 ) , ...
                                     'markersize',   sizeList( 1 ) , ...
                                    'markercolor',  colorList( 1, : ) );    % Defining the markers for the plot
-
+% 
+% markers( 4  ) = myMarker( dEE( 1, : ), dEE( 2,  :) ,  dEE( 3, :)  ,...
+%                                           'name', stringList( 1 ) , ...
+%                                     'markersize',   sizeList( 1 ) * 0.4 , ...
+%                                    'markercolor',  c.yellow );    % Defining the markers for the plot
+%                                
 markers( 4  ) = myMarker( data.desiredEEPos( 1, : ), zeros(1, length( data.desiredEEPos ) ),  data.desiredEEPos( 2, :) ,...
                                           'name', stringList( 1 ) , ...
                                     'markersize',   sizeList( 1 ) * 0.4 , ...
-                                   'markercolor',  c.pink );    % Defining the markers for the plot
+                                   'markercolor',  c.yellow );    % Defining the markers for the plot
+
+% markers( 5  ) = myMarker( pADD( 1, : ), pADD( 2, :),  pADD( 3, :) ,...
+%                                           'name', stringList( 1 ) , ...
+%                                     'markersize',   sizeList( 1 ) * 0.4 , ...
+%                                    'markercolor',  c.blue_sky );    % Defining the markers for the plot                               
+                               
                                
 tmp = sqrt( ( pEE(1,:) - data.desiredEEPos(1,:) ).^2 + ( pEE(3,:) - data.desiredEEPos(2,:) ).^2 );
 tmp1 = my2DLine( data.currentTime, tmp, 'linecolor', c.pink,   'linestyle', '-', 'linewidth', 6 );
+
+% tmp = sqrt( ( pEE(1,:) - dEE(1,:) ).^2 + ( pEE(3,:) - dEE(3,:) ).^2 );
+% tmp1 = my2DLine( data.currentTime, tmp, 'linecolor', c.pink,   'linestyle', '-', 'linewidth', 6 );
 
 
 ani = my3DAnimation( data.currentTime(2), markers );                                        % Input (1) Time step of sim. (2) Marker Information
@@ -144,9 +162,9 @@ ani.connectMarkers( 1, [ "SH", "EL", "EE" ], 'linecolor', c.grey )
 ani.addTrackingPlots( 2, tmp1 );                                
                        
 tmp = 0:0.01:2*pi;
-plot3( 1 * cos(tmp), zeros(1, length(tmp ) ), 1 * sin(tmp), 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 1 } ) ;
+plot3( cos( tmp ) , zeros( 1, length( tmp ) ) , sin( tmp ) , 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 1 } ) ;
 
-tmpLim = 2.5;
+tmpLim = 4.5;
 set( ani.hAxes{ 1 }, 'XLim',   [ -tmpLim , tmpLim ] , ...                  
                      'YLim',   [ -tmpLim , tmpLim ] , ...    
                      'ZLim',   [ -tmpLim , tmpLim ] , ...

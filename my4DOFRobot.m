@@ -73,7 +73,25 @@ classdef my4DOFRobot < my2DOFRobot
                         
         end
        
+        function FK = forwardKinematics( obj, idx, L )
+        % ================================================================             
+        % [INPUT]
+        %    (1) idx, 1 is the first link, 2 is the 2nd link
+        %    (2) L is the length of the point where the jacobian should be calculated. 
+        %    (3) q is the relative angle array of the 2DOF robot. 
+        %        Can be done in array, which is 2-by-N, N is the time-series data
+        % ================================================================ 
+        % [OUTPUT]
+        %    (1) FK, the position of the given point
+        % ================================================================    
+        
+             %   To neglect the 4th element, 3-by-4 matrix multiplication
+             FK = [ eye(3), zeros(3,1) ] * obj.T_arr{ end - 2 + idx } * [ L; 1 ];
                 
+        end
+                          
+        
+        
         function M = getM( obj )
         % Calculating the mass matrix of the model 
         % ================================================================             
@@ -111,6 +129,31 @@ classdef my4DOFRobot < my2DOFRobot
             obj.M_mat = M;    
 
         end
+        
+        
+        function G = getG( obj )
+        % Calculating the gravity matrix of the model 
+        % ================================================================             
+        % [REF1] https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-manipdyn_v1_2.pdf
+        % [REF2] http://robotics.snu.ac.kr/edX/2014-2/lecturenotes/SNUx_Chapter_6.pdf
+        % ================================================================                  
+            
+            G = sym( 'G', [ 1, length( obj.q ) ] );
+        
+            V = 0;
+            
+            for i = 1 : length( obj.L )
+                pc = obj.forwardKinematics( i, [ 0; 0; -obj.Lc( i )] );
+                V  = V + obj.M( i ) * obj.g * pc( end );                   % Getting the z direction
+            end
+            
+            for i = 1 : length( obj.q )
+                G( i ) = simplify( functionalDerivative( V, obj.q( i ) ) );
+            end
+            
+            obj.G_mat = G;
+        end
+        
 
 
         
