@@ -45,8 +45,8 @@ qMat = interp1( tvec, y( 1:4, : )', tmp );
 % tmp = arrayfun( xd, tVec , 'UniformOutput', false); tmp = cell2mat( tmp' );
 
 pSH = zeros( 3, length( tVec ) );
-pEL = robot.calcForwardKinematics( 1, [1;0;0], qMat(:,1:2)' );
-pEE = robot.calcForwardKinematics( 2, [1;0;0], qMat(:,1:2)' );
+pEL = robot.calcForwardKinematics( 1, [0;0;-1], qMat(:,1:2)' );
+pEE = robot.calcForwardKinematics( 2, [0;0;-1], qMat(:,1:2)' );
 
 pos = {pSH, pEL, pEE};
 
@@ -82,10 +82,10 @@ ani.run( 1, true, 'output')
 
 %% Deriving the end-effector time derivative of Jacobian
 
-Jsym  = robot.jacobian( 2, [robot.L(2);0;0] );
+Jsym  = robot.jacobian( 2, [0;0;-robot.L(2)] );
 dJsym = diff( Jsym,  't' );
 
-tmp = subs(   robot.G_mat,  diff( robot.q, robot.t ), robot.dq )
+tmp = subs(  dJsym,  diff( robot.q, robot.t ), robot.dq )
 dJEEMat = arrayfun(@char, tmp, 'uniform', 0);
 
 oldS = {'q1(t)','q2(t)', 'dq1(t)','dq2(t)', 'sin'   , 'cos'   , 'L1'     , 'L2'      , 'Lc1'      , 'Lc2'     , 'M1'      , 'M2'      };
@@ -138,10 +138,14 @@ markers(3  ) = myMarker( pSH( 1, : ), pSH( 2, :) , pSH(3, : ), ...
 %                                     'markersize',   sizeList( 1 ) * 0.4 , ...
 %                                    'markercolor',  c.yellow );    % Defining the markers for the plot
 %                                
-markers( 4  ) = myMarker( data.desiredEEPos( 1, : ), zeros(1, length( data.desiredEEPos ) ),  data.desiredEEPos( 2, :) ,...
+markers( 4  ) = myMarker( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) ,...
                                           'name', stringList( 1 ) , ...
                                     'markersize',   sizeList( 1 ) * 0.4 , ...
                                    'markercolor',  c.yellow );    % Defining the markers for the plot
+% markers( 4  ) = myMarker( data.desiredEEPos( 1, : ), zeros(1, length( data.desiredEEPos ) ),  data.desiredEEPos( 2, :) ,...
+%                                           'name', stringList( 1 ) , ...
+%                                     'markersize',   sizeList( 1 ) * 0.4 , ...
+%                                    'markercolor',  c.yellow );    % Defining the markers for the plot
 
 % markers( 5  ) = myMarker( pADD( 1, : ), pADD( 2, :),  pADD( 3, :) ,...
 %                                           'name', stringList( 1 ) , ...
@@ -149,7 +153,7 @@ markers( 4  ) = myMarker( data.desiredEEPos( 1, : ), zeros(1, length( data.desir
 %                                    'markercolor',  c.blue_sky );    % Defining the markers for the plot                               
                                
                                
-tmp = sqrt( ( pEE(1,:) - data.desiredEEPos(1,:) ).^2 + ( pEE(3,:) - data.desiredEEPos(2,:) ).^2 );
+tmp = sqrt( ( pEE(1,:) - data.desiredEEPos(1,:) ).^2 + ( pEE(2,:) - data.desiredEEPos(2,:) ).^2  + ( pEE(3,:) - data.desiredEEPos(3,:) ).^2 );
 tmp1 = my2DLine( data.currentTime, tmp, 'linecolor', c.pink,   'linestyle', '-', 'linewidth', 6 );
 
 % tmp = sqrt( ( pEE(1,:) - dEE(1,:) ).^2 + ( pEE(3,:) - dEE(3,:) ).^2 );
@@ -161,21 +165,56 @@ ani.connectMarkers( 1, [ "SH", "EL", "EE" ], 'linecolor', c.grey )
 
 ani.addTrackingPlots( 2, tmp1 );                                
                        
-tmp = 0:0.01:2*pi;
-plot3( cos( tmp ) , zeros( 1, length( tmp ) ) , sin( tmp ) , 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 1 } ) ;
+plot3( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) , 'color', c.yellow, 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 1 } ) ;
+% plot3( cos( tmp ) , zeros( 1, length( tmp ) ) , sin( tmp ) , 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 1 } ) ;
 
-tmpLim = 4.5;
+tmpLim = 2.5;
 set( ani.hAxes{ 1 }, 'XLim',   [ -tmpLim , tmpLim ] , ...                  
                      'YLim',   [ -tmpLim , tmpLim ] , ...    
                      'ZLim',   [ -tmpLim , tmpLim ] , ...
-                     'view',   [0   0 ]     )                  % Set the view, xlim, ylim and zlim of the animation
-                                                                           % ani.hAxes{ 1 } is the axes handle for the main animation     
+                     'view',   [20   30 ]     )               
+                 
+ani.addZoomWindow( 3 , "EE", 1.2);                   
+set( ani.hAxes{ 3 }, 'view',   [20   30 ]     )               
+
+plot3( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) , 'color', c.yellow, 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 3 } ) ;
+
 ani.run( .5, true, 'output')
                                                                   
                               
 
+%% (--) ========================================================
+%% (3-) Manipulator Regressor Identification
+%% --- (3 - a) Finding the Y function for the calculation.
 
-%% (-3) ODE Function Definition
+robot = my4DOFRobot( 'L',      [1,1], ...
+                     'M',      [1,1], ...
+                    'Lc', [0.5, 0.5], ...
+                     'I', [1, 1, 1; 1, 1, 1], ...
+                     'g', 9.81  );
+                 
+[Y, a] = robot.findManipulatorRegressor( );
+
+%% (--) ========================================================
+%% (4-) Substitution for Python code
+
+dJEEMat = arrayfun(@char, Y, 'uniform', 0);
+
+oldS = {'q1(t)','q2(t)', 'q3(t)','q4(t)', 'dq1(t)','dq2(t)', 'dq3(t)','dq4(t)', ...
+        'ddqr1', 'ddqr2' , 'ddqr3', 'ddqr4' , 'dqr1', 'dqr2', 'dqr3', 'dqr4' ,  ...
+        'sin'   , 'cos'   , 'L1'     , 'L2'      , 'Lc1'      , 'Lc2'     , 'M1'      , 'M2'      };
+newS = { 'q[0]', 'q[1]', 'q[2]',  'q[3]', 'dq[0]', 'dq[1]', 'dq[2]', 'dq[3]', ...
+         'ddqr[0]', 'ddqr[1]', 'ddqr[2]', 'ddqr[3]', 'dqr[0]', 'dqr[1]',  'dqr[2]', 'dqr[3]',...
+         'np.sin', 'np.cos', 'self.L1', 'self.L2' , 'self.Lc1' , 'self.Lc2', 'self.m1' , 'self.m2' };
+
+
+tmp = dJEEMat;
+for i = 1 : length(oldS)
+    tmp = strrep( tmp, oldS{i}, newS{i} );
+end
+
+
+%% (--) ODE Function Definition
 
 function dx = odefcn( t, x, M, C, G )
     % v = xr, qr, q, qe, each a 2-by-1 vector

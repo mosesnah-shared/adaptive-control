@@ -35,6 +35,8 @@ classdef my2DOFRobot < handle
         C_mat = [];
         G_mat = [];
         
+        n_dof;
+        
         % Actual values of the mass, coriolis and gravity matrix 
         M_val;
         C_val;
@@ -131,9 +133,31 @@ classdef my2DOFRobot < handle
 
         end
         
+        function A = getCoefficient( dx1, dx2 )
+
+            A = sym( 'A', [ length( dx1 ), length( dx2 ) ] );
+
+            for i = 1 : length( dx1 )                                 
+                for j = 1 : length( dx2 )                             
+
+                    [ tmpc, tmpt ] = coeffs( dx1( i ), dx2( j ) );    
+
+                    % IF the coefficients (tmpc) corresponding to dq(3) is empty, put zero
+                    tmp = tmpc( tmpt == dx2( j ) );
+                    if( isempty( tmp ) )
+                        A( i, j ) = 0; 
+                    else    
+                        A( i, j ) = tmp;
+                    end
+
+                end
+            end
+        end   
+
     end
-        
-    
+ 
+
+
     methods
         function obj = my2DOFRobot( varargin ) %
                         
@@ -144,6 +168,8 @@ classdef my2DOFRobot < handle
             syms   q1(t)   q2(t)                                           % joint angle        variable -   dependent variable.
             syms  dq1(t)  dq2(t)                                           % joint velocity     variable -   dependent variable.
             syms ddq1(t) ddq2(t)                                           % joint acceelration variable -   dependent variable.            
+            
+            obj.n_dof = 2;
             
             obj.t   = t;
             obj.q   = [   q1(t),   q2(t) ];
@@ -163,7 +189,7 @@ classdef my2DOFRobot < handle
             % The forward kinematics equation in se(3) formulation
             % Basic T matrix, input q (1) and L (3-by-1)  
             obj.T01 = obj.se3( -obj.q( 1 ), zeros( 3, 1 )        , @roty );           
-            obj.T12 = obj.se3( -obj.q( 2 ), [ obj.L( 1 ); 0; 0 ] , @roty );
+            obj.T12 = obj.se3( -obj.q( 2 ), [ 0; 0; -obj.L( 1 ) ] , @roty );
             
             obj.T_arr = { obj.T01, obj.T01 * obj.T12 };
             
@@ -187,6 +213,68 @@ classdef my2DOFRobot < handle
             
             
         end
+        
+        function [Y, a] = findManipulatorRegressor( obj )
+            % This method is for calculating the  Y matrix and a vector, which will substitute
+            % Mq'' + Cq' + G = Ya
+            
+            M1  = obj.M( 1 );   M2 = obj.M( 2 );
+            L1  = obj.L( 1 );   L2 = obj.L( 2 );
+            Lc1 = obj.Lc( 1 ); Lc2 = obj.Lc( 2 );
+            
+            % The possible a vector that might be included in the manipulator equation.
+            % Later, it will be trimmed down
+            avec = [     obj.I(1,1), obj.I(1,2),  obj.I(1,3), obj.I(2,1), obj.I(2,2), obj.I(2,3),  ...
+                                         M1 *  L1^2,     M2 *  L1^2,    M1 *  L2^2,    M2 * Lc2^2, ...
+                                         M1 * Lc1^2,     M2 * Lc1^2,    M1 * Lc2^2,    M2 * Lc2^2, ...
+                                      M1 * Lc1 * L1,  M1 * Lc1 * L2, M1 * Lc2 * L1, M1 * Lc2 * L2, ...
+                                      M2 * Lc1 * L1,  M2 * Lc1 * L2, M2 * Lc2 * L1, M2 * Lc2 * L2, ...
+                           M1 * obj.g * Lc1, M2 * obj.g * Lc1, M1 * obj.g * Lc2, M2 * obj.g * Lc2, ...
+                           M1 * obj.g *  L1, M2 * obj.g *  L1, M1 * obj.g *  L2, M2 * obj.g *  L2  ];  
+                   
+            asym = sym( 'a', [1, length( avec ) ] );  
+
+            ddqr = sym( 'ddqr', [ 1, obj.n_dof ] );
+             dqr = sym(  'dqr', [ 1, obj.n_dof ] );
+            
+            tau = obj.M_mat * obj.myTranspose( ddqr   ) + ...
+                  obj.C_mat * obj.myTranspose( dqr    ) + ...
+                              obj.myTranspose( obj.G_mat  );
+             
+             
+%             tau = obj.M_mat * obj.myTranspose( obj.ddq    ) + ...
+%                   obj.C_mat * obj.myTranspose( obj.dq     ) + ...
+%                               obj.myTranspose( obj.G_mat  );
+            
+            % First, we need to substitue the tau function with the a values  
+            tau_sub = sym( 'tau_sub', [ obj.n_dof,1] );
+
+            for i = 1 : obj.n_dof
+
+                tmp = tau( i );
+
+                for j = 1 : length( avec ) 
+
+                    tmp = subs( expand( tmp ), avec( j ), asym( j ) );
+
+                end
+
+                tau_sub( i ) = tmp;
+            end       
+                   
+         
+            % Y is simply the jacobian of tau with respect to a
+            Y = obj.getCoefficient( tau_sub, asym );
+            
+            % Clean up the columns filled with 0, 
+            % Get the index of it
+            
+            idx = ~all( Y == 0 );
+            Y   =   simplify( Y( :,idx ) );
+            a   =   avec(  idx );
+            
+        end
+        
         
         function FK = forwardKinematics( obj, idx, L )
         % ================================================================             
@@ -237,7 +325,7 @@ classdef my2DOFRobot < handle
         % ================================================================              
             tmp = obj.jacobian( idx, L );
             tmp = obj.substitute( tmp, {'L', 'Lc'}, obj.r );
-            tmp = double( subs( tmp, {'q1', 'q2'}, { qarr( 1, : ), qarr( 1, : ) } ) );
+            tmp = double( subs( tmp, {'q1', 'q2'}, { qarr( 1, : ), qarr( 2, : ) } ) );
             
             % For returning a 3D matrix, 
             nc1 = length( obj.L ); nc2 = length( qarr( 1, : ) );
@@ -313,7 +401,7 @@ classdef my2DOFRobot < handle
             V = 0;
             
             for i = 1 : length( obj.L )
-                pc = obj.forwardKinematics( i, [ obj.Lc( i ); 0; 0] );
+                pc = obj.forwardKinematics( i, [0; 0; -obj.Lc( i )] );
                 V  = V + obj.M( i ) * obj.g * pc( end );                   % Getting the z direction
             end
             
@@ -338,7 +426,7 @@ classdef my2DOFRobot < handle
             for i = 1 : length( obj.Lc ) % Iterating along the number of c.o.ms
                 
                 % Getting the se(3) matrix for the C.O.M.
-                tmp = obj.T_arr{ i } * obj.se3( 0, [ obj.Lc( i ); 0; 0], @rotz );
+                tmp = obj.T_arr{ i } * obj.se3( 0, [ 0; 0; -obj.Lc( i )], @rotz );
                 
                 % Calculation of body velocity is necessary for getting the generalized mass matrix
                 % inv(T) * d(T) = V_b, where V_b is 4-by-4 matrix                

@@ -45,6 +45,8 @@ classdef my4DOFRobot < my2DOFRobot
             obj.Lc  = sym( 'Lc',[1,2], 'positive' );
             obj.M   = sym( 'M' ,[1,2], 'positive' );  
             
+            obj.n_dof = 4;
+            
             obj.g   = sym('g', 'real' );
             
             syms I1xx I1yy I1zz I2xx I2yy I2zz positive
