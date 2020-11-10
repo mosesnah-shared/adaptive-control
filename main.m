@@ -110,7 +110,8 @@ stringList = [ "SH", "EL", "EE" ];                                         % 3 U
 
 % Marker in order, target (1), upper limb (3, SH, EL, WR) and Whip (25) 
 sizeList   = [ 24, 24, 24 ];                        % Setting the size of each markers
-colorList  = [ c.blue; c.green; c.pink ];  % Setting the color of each markers
+colorList  =  repmat( c.yellow, 3, 1);
+% colorList  = [ c.blue; c.green; c.pink ];  % Setting the color of each markers
 
 pSH = data.geomXYZPositions(1:3, :);
 pEL = data.geomXYZPositions(4:6, :);
@@ -172,12 +173,12 @@ tmpLim = 2.5;
 set( ani.hAxes{ 1 }, 'XLim',   [ -tmpLim , tmpLim ] , ...                  
                      'YLim',   [ -tmpLim , tmpLim ] , ...    
                      'ZLim',   [ -tmpLim , tmpLim ] , ...
-                     'view',   [20   30 ]     )               
+                     'view',   [32.8506   15.1025 ]     )               
                  
-ani.addZoomWindow( 3 , "EE", 1.2);                   
-set( ani.hAxes{ 3 }, 'view',   [20   30 ]     )               
-
+ani.addZoomWindow( 3 , "EE", 0.6);                   
+set( ani.hAxes{ 3 }, 'view',  get( ani.hAxes{ 1 }, 'view' ) )
 plot3( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) , 'color', c.yellow, 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 3 } ) ;
+set( ani.hAxes{ 3 }, 'xticklabel', [], 'yticklabel', [], 'zticklabel', [])
 
 ani.run( .5, true, 'output')
                                                                   
@@ -213,6 +214,65 @@ for i = 1 : length(oldS)
     tmp = strrep( tmp, oldS{i}, newS{i} );
 end
 
+
+%% (--) 
+%% Animation with a Whip
+
+data = myTxtParse( 'data_log.txt' );
+
+c_m = c.peach;
+nodeN = 25;
+
+genNodes = @(x) ( "node" + (1:x) );
+stringList = [ "Target", "SH", "EL", "EE",  genNodes( 25 ) ];       % 3 Upper limb markers + 1 target
+
+% Marker in order, target (1), upper limb (3, SH, EL, WR) and Whip (25) 
+sizeList   = [ 24, 40, 40, 40, 12 * ones( 1, 25 ) ];                        % Setting the size of each markers
+colorList  = [ c_m; repmat( c_m, 3, 1); repmat( c.grey, 25 , 1 ) ];  % Setting the color of each markers
+
+for i = 1: nodeN    % Iterating along each markers
+    markers( i ) = myMarker( data.geomXYZPositions( 3 * i - 2, : ), ... 
+                             data.geomXYZPositions( 3 * i - 1, : ), ... 
+                             data.geomXYZPositions( 3 * i    , : ), ...
+                                          'name', stringList( i ) , ...
+                                    'markersize',   sizeList( i ) , ...
+                                   'markercolor',  colorList( i, : ) );    % Defining the markers for the plot
+end
+
+pEE =  data.geomXYZPositions( 10:12, :  );
+
+markers( end + 1 ) = myMarker( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) ,...
+                                          'name', stringList( 1 ) , ...
+                                    'markersize',   sizeList( 1 ) * 0.4 , ...
+                                   'markercolor',  c.yellow );    % Defining the markers for the plot
+
+
+ani = my3DAnimation( data.currentTime(2), markers );                                        % Input (1) Time step of sim. (2) Marker Information
+ani.connectMarkers( 1, [ "SH", "EL", "EE" ], 'linecolor', c.grey )        
+                                                                           % Connecting the markers with a line.
+
+                                                                           
+tmpLim = 2.5;
+set( ani.hAxes{ 1 }, 'XLim',   [ -tmpLim , tmpLim ] , ...                  
+                     'YLim',   [ -tmpLim , tmpLim ] , ...    
+                     'ZLim',   [ -tmpLim , tmpLim ] , ...
+                     'view',   [32.8506   15.1025 ] )
+%                      'view',   [41.8506   15.1025 ]     )                  % Set the view, xlim, ylim and zlim of the animation
+                                 
+tmp = sqrt( ( pEE(1,:) - data.desiredEEPos(1,:) ).^2 + ( pEE(2,:) - data.desiredEEPos(2,:) ).^2  + ( pEE(3,:) - data.desiredEEPos(3,:) ).^2 );
+tmp1 = my2DLine( data.currentTime, tmp, 'linecolor', c.pink,   'linestyle', '-', 'linewidth', 6 );
+
+ani.addTrackingPlots( 2, tmp1 );
+
+plot3( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) , 'color', c.yellow, 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 1 } ) ;
+ani.addZoomWindow( 3 , "EE", 0.6);            
+
+plot3( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) , 'color', c.yellow, 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 3 } ) ;
+
+set( ani.hAxes{ 3 }, 'view',  get( ani.hAxes{ 1 }, 'view' ) )
+
+
+ani.run( 0.5, true, 'output') 
 
 %% (--) ODE Function Definition
 
