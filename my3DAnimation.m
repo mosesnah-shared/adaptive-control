@@ -305,7 +305,7 @@ classdef my3DAnimation < handle
                                          
         end        
 
-        function run( obj, vidRate, isVidRecord, videoName )
+        function run( obj, vidRate, duration, isVidRecord, videoName )
             %run: running the a whole animation and saving the video if defined.
             % [INPUTS]
             %   (1) vidRate 
@@ -313,31 +313,41 @@ classdef my3DAnimation < handle
             %       - if vidRate is 0.5, then the video is two times slower. 
             %       - if vidRate is 1.0, then the video is at real time speed.
             %       - if vidRate is 2.0, then the video is two times faster. 
+            %   (2) duration
+            %       - Duration of the animation        
             %
-            %   (2) isVidRecord ( boolean )
+            %   (3) isVidRecord ( boolean )
             %       - true or false, if false, simply showing the animation.
             %
-            %   (3) videoName (string)
+            %   (4) videoName (string)
             %       - name of the video for the recording.
 
+            if duration >= max( obj.tVec )
+               duration = max( obj.tVec ); 
+            end
                 
-            N    = length( obj.tVec );
-            step = round( ( 1 / obj.tStep / 60 ) );                     % Setting 60 fps - 1 second as default!
+            N    = round( duration/ obj.tStep );
             obj.vidRate = vidRate;     
-            
+            step = round( vidRate * ( 1 / obj.tStep / 60 ) );              % Setting 60 fps - 1 second as default!
 
-            if step == 0                                                % In case the step is too small, then set the simStep as 1
+            if step == 0                                                   % In case the step is too small, then set the simStep as 1
                step = 1; 
             end
             
             if isVidRecord                                                 % If video record is ON
-
-                fps     = 60 * vidRate;                                    % Frame-per-second of the video, 60Hz is default rate.
+                
+                if vidRate >=1 
+                    fps = 60;
+                else
+                    fps = 60 * vidRate; 
+                end
                 writerObj = VideoWriter( videoName, 'MPEG-4' );            % Saving the video as "videoName" 
                 writerObj.FrameRate = fps;                                 % How many frames per second.
                 open( writerObj );                                         % Opening the video write file.
 
             end    
+            
+
 
             for i = 1 : step : N
                 
