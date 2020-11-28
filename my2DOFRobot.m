@@ -241,12 +241,6 @@ classdef my2DOFRobot < handle
                   obj.C_mat * obj.myTranspose( dqr    ) + ...
                               obj.myTranspose( obj.G_mat  );
              
-                          
-                           
-             
-%             tau = obj.M_mat * obj.myTranspose( obj.ddq    ) + ...
-%                   obj.C_mat * obj.myTranspose( obj.dq     ) + ...
-%                               obj.myTranspose( obj.G_mat  );
             
             % First, we need to substitue the tau function with the a values  
             tau_sub = sym( 'tau_sub', [ obj.n_dof,1] );
@@ -449,8 +443,9 @@ classdef my2DOFRobot < handle
             
             for i = 1 : length( obj.Lc ) % Iterating along the number of c.o.ms
                 
+                iidx = [1, 2];
                 % Getting the se(3) matrix for the C.O.M.
-                tmp = obj.T_arr{ i } * obj.se3( 0, [ 0; 0; -obj.Lc( i )], @rotz );
+                tmp = obj.T_arr{ iidx( i ) } * obj.se3( 0, [ 0; 0; -obj.Lc( i )], @rotz );
                 
                 % Calculation of body velocity is necessary for getting the generalized mass matrix
                 % inv(T) * d(T) = V_b, where V_b is 4-by-4 matrix                

@@ -1,4 +1,4 @@
-classdef my4DOFRobot < handle
+classdef my5DOFRobot < handle
 % % =============================================================== %
 %   [DESCRIPTION]
 %       Class for generating an 2-DOF planar robot 
@@ -31,6 +31,7 @@ classdef my4DOFRobot < handle
         T12;            % From Frame 1 (SH)    to Frame 2 (EL)
         T23;            % From Frame 1 (SH)    to Frame 2 (EL)
         T34;            % From Frame 1 (SH)    to Frame 2 (EL)
+        T45;            % From Frame 1 (SH)    to Frame 2 (EL)
         
         T_arr;          % Array to fill T01, T02
                         % M, C, G Matrix of the upper-limb model 
@@ -162,26 +163,26 @@ classdef my4DOFRobot < handle
 
 
     methods
-        function obj = my4DOFRobot( varargin ) %
+        function obj = my5DOFRobot( varargin ) %
                         
             obj.r = myParser( varargin );
             
             % Defining the symbolic values 
             syms t positive                                                % time               variable - independent variable.
-            syms   q1(t)   q2(t)   q3(t)   q4(t)                           % joint angle        variable -   dependent variable.
-            syms  dq1(t)  dq2(t)  dq3(t)  dq4(t)                           % joint velocity     variable -   dependent variable.
-            syms ddq1(t) ddq2(t) ddq3(t) ddq4(t)                           % joint acceelration variable -   dependent variable.            
+            syms   q1(t)   q2(t)   q3(t)   q4(t)   q5(t)                   % joint angle        variable -   dependent variable.
+            syms  dq1(t)  dq2(t)  dq3(t)  dq4(t)  dq5(t)                   % joint velocity     variable -   dependent variable.
+            syms ddq1(t) ddq2(t) ddq3(t) ddq4(t) ddq5(t)                   % joint acceelration variable -   dependent variable.            
             
             obj.t   = t;
-            obj.q   = [   q1(t),   q2(t)    q3(t),   q4(t) ];
-            obj.dq  = [  dq1(t),  dq2(t),  dq3(t),  dq4(t) ];
-            obj.ddq = [ ddq1(t), ddq2(t), ddq3(t), ddq4(t) ];
+            obj.q   = [   q1(t),   q2(t)    q3(t),   q4(t),   q5(t) ];
+            obj.dq  = [  dq1(t),  dq2(t),  dq3(t),  dq4(t),  dq5(t) ];
+            obj.ddq = [ ddq1(t), ddq2(t), ddq3(t), ddq4(t), ddq5(t) ];
             
             obj.L   = sym( 'L' ,[1,2], 'positive' );
             obj.Lc  = sym( 'Lc',[1,2], 'positive' );
             obj.M   = sym( 'M' ,[1,2], 'positive' );  
             
-            obj.n_dof = 4;
+            obj.n_dof = 5;
 
             
             obj.g   = sym('g', 'real' );
@@ -195,12 +196,14 @@ classdef my4DOFRobot < handle
             obj.T01 = obj.se3( -obj.q( 1 ), zeros( 3, 1 )        , @roty );           
             obj.T12 = obj.se3( -obj.q( 2 ), zeros( 3, 1 )        , @rotx );
             obj.T23 = obj.se3(  obj.q( 3 ), zeros( 3, 1 )        , @rotz );
-            obj.T34 = obj.se3( -obj.q( 4 ), [ 0; 0; -obj.L( 1 ) ] , @roty );
+            obj.T34 = obj.se3( -obj.q( 4 ), [ 0; 0; -obj.L( 1 ) ], @roty );
+            obj.T45 = obj.se3(  obj.q( 5 ), zeros( 3, 1 )        , @rotz );
             
             obj.T_arr = { obj.T01, ...
                           obj.T01 * obj.T12, ...
                           obj.T01 * obj.T12 * obj.T23, ...
-                          obj.T01 * obj.T12 * obj.T23 * obj.T34 };
+                          obj.T01 * obj.T12 * obj.T23 * obj.T34, ...
+                          obj.T01 * obj.T12 * obj.T23 * obj.T34 * obj.T45 };
             
             obj.M_mat = obj.getM( );
             obj.C_mat = obj.getC( );
@@ -315,7 +318,7 @@ classdef my4DOFRobot < handle
         % ================================================================    
         
              %   To neglect the 4th element, 3-by-4 matrix multiplication
-             iidx = [3,4];
+             iidx = [3,5];
              FK = [ eye(3), zeros(3,1) ] * obj.T_arr{ iidx( idx ) } * [ L; 1 ];
                 
         end
@@ -334,8 +337,8 @@ classdef my4DOFRobot < handle
         % ================================================================              
             pos = obj.forwardKinematics( idx, L );
             pos = obj.substitute( pos, {'L', 'Lc'}, obj.r );
-            pos = double( subs( pos, {'q1', 'q2', 'q3', 'q4',}, ...
-                              { qarr( 1, : ), qarr( 2, : ), qarr( 3, : ), qarr( 4, : ) } ) );
+            pos = double( subs( pos, {'q1', 'q2', 'q3', 'q4', 'q5'}, ...
+                              { qarr( 1, : ), qarr( 2, : ), qarr( 3, : ), qarr( 4, : ), qarr( 4, : ) } ) );
             
         end
         
@@ -353,8 +356,8 @@ classdef my4DOFRobot < handle
         % ================================================================              
             tmp = obj.jacobian( idx, L );
             tmp = obj.substitute( tmp, {'L', 'Lc'}, obj.r );
-            tmp = double( subs( tmp, {'q1', 'q2', 'q3', 'q4',}, ...
-                              { qarr( 1, : ), qarr( 2, : ), qarr( 3, : ), qarr( 4, : ) } ) );
+            tmp = double( subs( tmp, {'q1', 'q2', 'q3', 'q4', 'q5'}, ...
+                              { qarr( 1, : ), qarr( 2, : ), qarr( 3, : ), qarr( 4, : ), qarr( 5, : ) } ) );
             
             % For returning a 3D matrix, 
             nc1 = length( obj.L ); nc2 = length( qarr( 1, : ) );
@@ -455,7 +458,7 @@ classdef my4DOFRobot < handle
             
             for i = 1 : length( obj.Lc ) % Iterating along the number of c.o.ms
                 
-                iidx = [3, 4];
+                iidx = [3, 5];
                 % Getting the se(3) matrix for the C.O.M.
                 tmp = obj.T_arr{ iidx( i ) } * obj.se3( 0, [ 0; 0; -obj.Lc( i )], @rotz );
                 
