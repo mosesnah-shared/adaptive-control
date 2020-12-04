@@ -337,9 +337,9 @@ classdef my3DAnimation < handle
             if isVidRecord                                                 % If video record is ON
                 
                 if vidRate >=1 
-                    fps = 60;
+                    fps = 30;
                 else
-                    fps = 60 * vidRate; 
+                    fps = 30 * vidRate; 
                 end
                 writerObj = VideoWriter( videoName, 'MPEG-4' );            % Saving the video as "videoName" 
                 writerObj.FrameRate = fps;                                 % How many frames per second.

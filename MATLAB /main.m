@@ -9,17 +9,15 @@
 clear all; close all; clc; workspace;
 
 cd( fileparts( matlab.desktop.editor.getActiveFilename ) );                % Setting the current directory (cd) as the current location of this folder. 
-
-% myFigureConfig( 'fontsize', 40, ...
-%                'lineWidth', 10, ...
-%               'markerSize', 25    )
           
 myFigureConfig( 'fontsize', 20, ...
-   'lineWidth', 5, ...
-  'markerSize', 25    )  
+               'lineWidth', 5, ...
+              'markerSize', 25    )  
              
 global c                                                                   % Setting color structure 'c' as global variable
 c  = myColor();                        
+
+
 
 %% (--) ========================================================
 %% (1-) 2DOF Robot Simulation
@@ -29,6 +27,7 @@ robot = my2DOFRobot( 'L',      [1,1], ...
                     'Lc', [0.5, 0.5], ...
                      'I', [1, 1, 1; 1, 1, 1], ...
                      'g', 9.81  );
+                 
                  
 robot = my4DOFRobot( 'L',      [1,1], ...
                      'M',      [1,1], ...
@@ -165,7 +164,7 @@ plot( data.currentTime, data.tau )
 
 %%
 data = myTxtParse( 'data_log.txt' );
-a_real = double( robot.substitute( a, { 'M', 'L', 'Lc', 'I', 'g' }, robot.r ) );
+a_real = double( robot.substitute( data.a, { 'M', 'L', 'Lc', 'I', 'g' }, robot.r ) );
 tmpc = cell2mat( struct2cell( c ) );
 
 tmpa = data.a./a_real';
@@ -309,7 +308,7 @@ for i = 1: 3    % Iterating along each markers
                                    'markercolor',  colorList( i, : ) );    % Defining the markers for the plot
 end
 
-pEE =  data.geomXYZPositions( 6:9, :  );
+pEE =  data.geomXYZPositions( 10:12, :  );
 
 markers( end + 1 ) = myMarker( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) ,...
                                           'name', stringList( 1 ) , ...
@@ -353,7 +352,7 @@ ani.run( 0.5, 5, true, 'output')
 
 %%
 
-data = myTxtParse( 'data_log.txt' );
+% data = myTxtParse( 'data_log.txt' );
 
 c_m = c.peach;
 nodeN = 25;
@@ -414,23 +413,69 @@ ani.addZoomWindow( 3 , "EE", 0.6);
 plot3( data.desiredEEPos( 1, : ), data.desiredEEPos( 2, :),  data.desiredEEPos( 3, :) , 'color', c.yellow, 'linestyle', '--', 'linewidth', 1, 'parent', ani.hAxes{ 3 } ) ;
 
 set( ani.hAxes{ 3 }, 'view',  get( ani.hAxes{ 1 }, 'view' ) )
+set( ani.hAxes{ 2 }, 'xlim',  [0, 16])
 set( ani.hAxes{ 3 }, 'xticklabel', [], 'yticklabel', [], 'zticklabel', [])
 
-ani.run( 0.5, 5, true, 'output') 
+xlabel( 'Time [sec]', 'parent', ani.hAxes{ 2 } )
+ylabel( 'Position Error [m]', 'parent', ani.hAxes{ 2 } )
+ani.goto( 280 )
+%%
+ani.run( 1.0, 16, true, 'output') 
 
 
-%% (--) ODE Function Definition
+%%
 
-function dx = odefcn( t, x, M, C, G )
-    % v = xr, qr, q, qe, each a 2-by-1 vector
-    % Since we know q, we can calculate x, which is the actual end-effector position
-    q1  = x( 1 );  q2  = x( 2 );
-    dq1 = x( 3 );  dq2 = x( 4 );
+% Plotting the weight matrix 
+% first, normalize the weight matrix
+w_max = max( max( data.weights ) );
+w_min = min( min( data.weights ) );
+
+n_weights = ( data.weights - w_min ) / ( w_max - w_min );
+% Normalize the weight matrix 
+
+mapped_array = uint8( n_weights * 255);
+
+
+f = figure();
+
+img = image( reshape( mapped_array(:,1), [4,40]  ) );
+
+colormap(gray(255));
+fps = 30;
+
+writerObj = VideoWriter( 'neural_network', 'MPEG-4' );      
+writerObj.FrameRate = fps;                           
+open( writerObj );   
+
+
+for i = 1: length( data.currentTime )
     
-    tmpM = double( subs( M, {'q1', 'q2' }, { q1, q2 }  ) );
-    tmpC = double( subs( C, {'q1', 'q2', 'dq1', 'dq2' }, { q1, q2, dq1, dq2 } ) );
-    tmpG = double( subs( G, {'q1', 'q2' }, { q1, q2 } ) );
-    
-    ddq = tmpM \ ( -tmpC * x(3:4) - tmpG' );
-    dx = [dq1; dq2; ddq];
-end
+        set( img, 'CData',    reshape( mapped_array(:,i), [4,40]     ) )
+
+        frame = getframe( f );                       
+        writeVideo( writerObj, frame );                        
+        
+        drawnow                                                
+
+end   
+   
+close( writerObj );
+
+% 
+% 
+% 
+% %% (--) ODE Function Definition
+% 
+% function dx = odefcn( t, x, M, C, G )
+%     % v = xr, qr, q, qe, each a 2-by-1 vector
+%     % Since we know q, we can calculate x, which is the actual end-effector position
+%     q1  = x( 1 );  q2  = x( 2 );
+%     dq1 = x( 3 );  dq2 = x( 4 );
+%     
+%     tmpM = double( subs( M, {'q1', 'q2' }, { q1, q2 }  ) );
+%     tmpC = double( subs( C, {'q1', 'q2', 'dq1', 'dq2' }, { q1, q2, dq1, dq2 } ) );
+%     tmpG = double( subs( G, {'q1', 'q2' }, { q1, q2 } ) );
+%     
+%     ddq = tmpM \ ( -tmpC * x(3:4) - tmpG' );
+%     dx = [dq1; dq2; ddq];
+% end
