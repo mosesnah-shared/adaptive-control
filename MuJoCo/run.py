@@ -83,9 +83,11 @@ Options:
 Examples, try:
     python3 run.py --help
     python3 run.py --version
-    python3 run.py --modelName="2D_model.xml" --runTime=30
+    python3 run.py --modelName="2D_model.xml" --simType=1 --runTime=30
     python3 run.py --modelName="2D_model.xml" --simType=2
-    python3 run.py --modelName="3D_model.xml" --simType=2
+    python3 run.py --modelName="3D_model.xml" --simType=1 --saveData
+    python3 run.py --modelName="3D_model.xml" --simType=2 --saveData --recordVideo --vidRate=0.5
+    python3 run.py --modelName="3D_model.xml" --simType=2 --saveData --videoOFF
 
 """
 
