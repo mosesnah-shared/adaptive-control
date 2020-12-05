@@ -322,37 +322,38 @@ classdef my3DAnimation < handle
             %   (4) videoName (string)
             %       - name of the video for the recording.
 
+            obj.vidRate = vidRate;
+            
             if duration >= max( obj.tVec )
                duration = max( obj.tVec ); 
             end
                 
-            N    = round( duration/ obj.tStep );
-            obj.vidRate = vidRate;     
-            step = round( vidRate * ( 1 / obj.tStep / 60 ) );              % Setting 60 fps - 1 second as default!
-
-            if step == 0                                                   % In case the step is too small, then set the simStep as 1
-               step = 1; 
+            if vidRate >=1 
+                fps = 30;
+            else
+                fps = 30 * vidRate; 
             end
-            
+
             if isVidRecord                                                 % If video record is ON
                 
-                if vidRate >=1 
-                    fps = 30;
-                else
-                    fps = 30 * vidRate; 
-                end
                 writerObj = VideoWriter( videoName, 'MPEG-4' );            % Saving the video as "videoName" 
                 writerObj.FrameRate = fps;                                 % How many frames per second.
                 open( writerObj );                                         % Opening the video write file.
 
             end    
             
+            N    = round( duration/ obj.tStep );
+            step = round( vidRate * ( 1 / obj.tStep / fps ) );              % Setting 60 fps - 1 second as default!
 
+
+            if step == 0                                                   % In case the step is too small, then set the simStep as 1
+               step = 1; 
+            end            
+            
 
             for i = 1 : step : N
                 
-                obj.goto( i )                                           % Run a single step of the simulation
-
+                obj.goto( i )                                              % Run a single step of the simulation
                 if isVidRecord                                             % If videoRecord is ON
                     frame = getframe( obj.hFigure );                       % Get the current frame of the figure
                     writeVideo( writerObj, frame );                        % Writing it to the mp4 file/

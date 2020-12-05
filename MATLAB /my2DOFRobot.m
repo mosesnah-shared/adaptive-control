@@ -21,6 +21,10 @@ classdef my2DOFRobot < handle
         q;              % Joint angles                                     (1-by-n) 
         dq;             % Joint velocities                                 (1-by-n) 
         ddq;            % Joint accelerations                              (1-by-n) 
+        
+        dqr;            % Reference Joint velocities                       (1-by-n) 
+        ddqr;           % Reference Joint accelerations                    (1-by-n)         
+        
         L;              % Length of links                                  (1-by-2) 
         Lc;             % Length from proximal joint to C.O.M.             (1-by-2) 
         M;              % Mass of links                                    (1-by-2) 
@@ -271,7 +275,7 @@ classdef my2DOFRobot < handle
             % tau = Mq'' + Cq' + G
             
             % Defining the se(3) matrix for each coordinate transformation        
-            T01 = obj.se3( -obj.q( 1 ), zeros( 3, 1 )        , @roty );           
+            T01 = obj.se3( -obj.q( 1 ), zeros( 3, 1 )         , @roty );           
             T12 = obj.se3( -obj.q( 2 ), [ 0; 0; -obj.L( 1 ) ] , @roty );
             
             % [WARNING!!!]
@@ -282,9 +286,6 @@ classdef my2DOFRobot < handle
             C = obj.getC( );
             G = obj.getG( );
 
-%             obj.M_val     = obj.substitute( obj.M_mat, { 'M', 'L', 'Lc', 'I', 'g' }, obj.r );
-%             obj.C_val     = obj.substitute( obj.C_mat, { 'M', 'L', 'Lc', 'I', 'g' }, obj.r );
-%             obj.G_val     = obj.substitute( obj.G_mat, { 'M', 'L', 'Lc', 'I', 'g' }, obj.r );                        
         end
 
         function FK = forwardKinematics( obj, idx, L )
@@ -414,11 +415,11 @@ classdef my2DOFRobot < handle
             % [REF] Slotine, Jean-Jacques E., and Weiping Li. "On the adaptive control of robot manipulators." The international journal of robotics research 6.3 (1987): 49-59.
             
             
-            ddqr = sym( 'ddqr', [ 1, obj.nDOF ] );
-             dqr = sym(  'dqr', [ 1, obj.nDOF ] );
+            obj.ddqr = sym( 'ddqr', [ 1, obj.nDOF ] );
+            obj.dqr = sym(  'dqr', [ 1, obj.nDOF ] );
             
-            tau = obj.M_mat * obj.myTranspose( ddqr       ) + ...
-                  obj.C_mat * obj.myTranspose( dqr        ) + ...
+            tau = obj.M_mat * obj.myTranspose( obj.ddqr       ) + ...
+                  obj.C_mat * obj.myTranspose( obj.dqr        ) + ...
                               obj.myTranspose( obj.G_mat  );            
             
             
@@ -497,35 +498,6 @@ classdef my2DOFRobot < handle
             
         end
         
-        
-        
-%         function eq2 = substitute( obj, eq1, var, values )
-%             
-%             eq2 = eq1;
-%             for i = 1 : length( var )       
-%                 eq2 = subs( eq2, obj.( var{ i } ), values.( var{ i } ) );
-%             end
-%             
-%             
-%         end        
-                   
-%         function pos = calcForwardKinematics( obj, idx, L , qarr )
-        % Calculating the xyz position of the given point    
-        % ================================================================             
-        % [INPUT]
-        %    (1) idx, 1 is the first link, 2 is the 2nd link
-        %    (2) L is the length of the point where the jacobian should be calculated. 
-        %    (3) qarr is the relative angle array of the 2DOF robot.
-        %        size will be 2-by-N
-        % ================================================================ 
-        % [OUTPUT]
-        %    (1) position of the given point, 3-by-N matrix
-        % ================================================================              
-%             pos = obj.forwardKinematics( idx, L );
-%             pos = obj.substitute( pos, {'L', 'Lc'}, obj.r );
-%             pos = double( subs( pos, {'q1', 'q2'}, { qarr( 1, : ), qarr( 2, : ) } ) );
-%             
-%         end
         
 %         function J = calcJacobian( obj, idx, L, qarr )
         % Calculating the xyz position of the given point    
