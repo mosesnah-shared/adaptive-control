@@ -21,6 +21,7 @@ latex
 jpg
 mp4
 *.m~
+*.pyc
 *.pdf
 *.txt
 *.mp4
