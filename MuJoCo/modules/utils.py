@@ -165,45 +165,6 @@ def quaternion2euler( quatVec ):                                                
 
     return yaw, pitch, roll
 
-def quaternion2euler_mine( quatVec ):                                           # Inputting quaternion matrix and outputing the yaw, pitch, roll of the euler angle.
-    """
-        Converting a R4 quaternion vector (w, x, y, z) to Euler Angle (Roll, Pitch, Yaw)
-
-        [ARGUMENTS]
-            [NAME]          [TYPE]        [DESCRIPTION]
-            (1) quatVec     List          The quaternion vector, ordered in w, x, y and z
-
-        [OUTPUT]
-            [NAME]                   [TYPE]        [DESCRIPTION]
-            (1) yaw, pitch, roll                   The euler angles of the given quaternion vector.
-
-        [DESCRIPTION]
-        This code is directly from the following reference
-        [REF] https://computergraphics.stackexchange.com/questions/8195/how-to-convert-euler-angles-to-quaternions-and-get-the-same-euler-angles-back-fr
-
-    """
-
-    if len( quatVec ) != 4:
-        raise ValueError( "Wrong size of input argument. Given size is [{0:d}] while it should be 4".format(
-                                                                    len( quatVec ) ) )
-
-    w, x, y ,z  = quatVec[:]
-
-    t0     =       - 2.0 * ( w * y + x * z )
-    t1     =   1.0 - 2.0 * ( x * x + y * y )
-    pitch   = myMath.atan2( t0, t1 )
-
-    t2     = - 2.0 * ( w * x - y * z )
-    t2     = + 1.0 if t2 > +1.0 else t2
-    t2     = - 1.0 if t2 < -1.0 else t2
-    roll  = myMath.asin( t2 )
-
-    t3     =       + 2.0 * ( w * z + x * y )
-    t4     = + 1.0 - 2.0 * ( x * x + z * z )
-    yaw    = myMath.atan2( t3, t4 )
-
-    return yaw, pitch, roll # z, y, x in order
-
 
 def str2bool( s ):
     """
