@@ -44,15 +44,10 @@ classdef my2DOFRobot < handle
         G_mat;
         
         nDOF;
+       
         
-        % Actual values of the mass, coriolis and gravity matrix 
-%         M_val;
-%         C_val;
-%         G_val;
-        
-        % r is arguments for varargin
-        r;
-        
+        r;              % r is arguments for varargin
+    
     end
     
     methods (Static)
@@ -117,31 +112,6 @@ classdef my2DOFRobot < handle
         
         end
         
-        function JT = myTranspose( J )
-        % ================================================================
-        % Manual tranpose of the symbolic matrix
-        % The reason we separately define myTranspose function, is because if you simply use 
-        % MATLAB's transpose, the symbolic matrix returns the complex conjugate, which bothers the analysis
-        % Please only use this when you need symbolic matrix transformation.
-        % ================================================================         
-        % [INPUT]
-        %    (1) J: The matrix that you are aiming to Transpose
-        % ================================================================ 
-        % [OUTPUT]
-        %    (1) JT: The matrix which is transposed
-        % ================================================================
-            
-            % Manual tranpose of the symbolic matrix
-            [nR, nC] = size( J );
-            JT = sym( 'JT', [nC, nR] );
-            
-            for i = 1 : nR
-                for j = 1 : nC
-                    JT( j,i ) = J( i,j );
-                end
-            end
-
-        end
         
         function J = myJacobian( x1, x2 )
         % ================================================================
@@ -251,22 +221,22 @@ classdef my2DOFRobot < handle
                 tmp2 = sym( zeros( 1, obj.nDOF ) );                        % Define an empty array
                 
                 for j = 1 : obj.nDOF 
-                    var_str   = strcat( tmp{ i }, num2str( j ), '(t)' );   % Builds the symbolic variable string
+                    var_str   = strcat( tmp{ i }, num2str( j ), '(t)' );   % Builds the symbolic variable string, e.g., q1, q2, q3...
                     tmp2( j ) = str2sym( var_str );                        % store the variable in the array
                 end
                 
-                obj.( tmp{ i } ) = tmp2;
+                obj.( tmp{ i } ) = tmp2;                                   % Replacement
                 
             end
             
             % Defining geometrical/inertial symbolic values 
             syms I1xx I1yy I1zz I2xx I2yy I2zz positive
             
-            obj.L   = sym( 'L' ,[1,2], 'positive' );
-            obj.Lc  = sym( 'Lc',[1,2], 'positive' );
-            obj.M   = sym( 'M' ,[1,2], 'positive' );  
+            obj.L   = sym( 'L' ,[1,2], 'positive' );                       % Length of limb segment
+            obj.Lc  = sym( 'Lc',[1,2], 'positive' );                       % Length from proximal joint to COM
+            obj.M   = sym( 'M' ,[1,2], 'positive' );                       % Mass   of limb segment
             obj.I   = [ I1xx, I1yy, I1zz; ...
-                        I2xx, I2yy, I2zz];
+                        I2xx, I2yy, I2zz];                                 % Inertia w.r.t. C.o.M.
                
         end
         
@@ -342,7 +312,7 @@ classdef my2DOFRobot < handle
                 tmp = diag( [ obj.M( i ),   obj.M( i ),   obj.M( i ), ...
                             obj.I( i,1 ), obj.I( i,2 ), obj.I( i,3 )    ]);
             
-                M = M + simplify( obj.myTranspose( J ) * tmp * J );
+                M = M + simplify( J.' * tmp * J );                     % .' If you don't add dot before the transpose notation, the transpose will return conjugate
                 
             end
                
@@ -397,7 +367,7 @@ classdef my2DOFRobot < handle
             
             for i = 1 : length( obj.L )
                 pc = obj.forwardKinematics( i, [0; 0; -obj.Lc( i )] );
-                V  = V + obj.M( i ) * obj.g * pc( end );                   % Getting the z direction
+                V  = V + obj.M( i ) * obj.g * pc( end );                   % Calculating the Gravitational Energy
             end
             
             for i = 1 : length( obj.q )
@@ -416,11 +386,11 @@ classdef my2DOFRobot < handle
             
             
             obj.ddqr = sym( 'ddqr', [ 1, obj.nDOF ] );
-            obj.dqr = sym(  'dqr', [ 1, obj.nDOF ] );
+            obj.dqr  = sym(  'dqr', [ 1, obj.nDOF ] );
             
-            tau = obj.M_mat * obj.myTranspose( obj.ddqr       ) + ...
-                  obj.C_mat * obj.myTranspose( obj.dqr        ) + ...
-                              obj.myTranspose( obj.G_mat  );            
+            tau = obj.M_mat * obj.ddqr.' + ...
+                  obj.C_mat * obj.dqr.'  + ...
+                  obj.G_mat.';            
             
             
             % The possible a vector that might be included in the manipulator equation.
@@ -498,58 +468,6 @@ classdef my2DOFRobot < handle
             
         end
         
-        
-%         function J = calcJacobian( obj, idx, L, qarr )
-        % Calculating the xyz position of the given point    
-        % ================================================================             
-        % [INPUT]
-        %    (1) idx, 1 is the first link, 2 is the 2nd link
-        %    (2) L is the length of the point where the jacobian should be calculated. 
-        %    (3) qarr is the relative angle array of the 2DOF robot.
-        %        size will be 2-by-N
-        % ================================================================ 
-        % [OUTPUT]
-        %    (1) position of the given point, 3-by-N matrix
-        % ================================================================              
-%             tmp = obj.jacobian( idx, L );
-%             tmp = obj.substitute( tmp, {'L', 'Lc'}, obj.r );
-%             tmp = double( subs( tmp, {'q1', 'q2'}, { qarr( 1, : ), qarr( 2, : ) } ) );
-%             
-%             % For returning a 3D matrix, 
-%             nc1 = length( obj.L ); nc2 = length( qarr( 1, : ) );
-%             
-%             J = zeros( 3, nc1, nc2 );
-%             
-%             for i = 1 : nc2
-%                 J( :, :, i ) = tmp( :, i : nc2 : end );
-%             end
-%             
-%         end
-%         
-        
-%         function J = jacobian( obj, idx, L )
-%         % ================================================================             
-%         % [INPUT]
-%         %    (1) idx, 1 is the first link, 2 is the 2nd link
-%         %    (2) L is the length of the point where the jacobian should be calculated. 
-%         %    (3) q is the relative angle array of the 2DOF robot.
-%         %        Can be done in array, which is 2-by-N, N is the time-series data        
-%         % ================================================================ 
-%         % [OUTPUT]
-%         %    (1) J, Jacobian, 3-by-2 matrix
-%         % ================================================================     
-%         
-%             x  = obj.forwardKinematics( idx, L );                          % Getting the position (3) vector from forward kinematics calculation
-%             
-%             dx = subs( diff(     x, obj.t ), ...                           % (1st term) Time differentiation of x to get dx/dt
-%                        diff( obj.q, obj.t ), ...                           % (2nd + 3rd term) Substituting all diff( q,t ) to dq's
-%                        obj.dq );    
-%                                                                            
-%             % Calculating the jacobian from the position                                                                            
-%             J = obj.myJacobian( dx, obj.dq );
-% 
-%         end
-
 
     end
 
