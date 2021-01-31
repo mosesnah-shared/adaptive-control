@@ -95,9 +95,14 @@ class AdaptiveController( Controller ):
         self.t_sym = sp.symbols( 't' )                                          # time symbol of the equation, useful when defining the trajectory
 
 
-        self.J_old  = None
-        self.J_new  = None
+        # For the desired trajectory to be followed
+        # Regardless of whether it is Cartesian Space/Joint Space tracking, we'll set the trajectory
+        self.traj_func_pos = 
+        self.traj_func_vel = 
+
+        self.J_old, self.J_new = None, None
         self.dt     = self.mjModel.opt.timestep
+
 
         if   self.n_act == 2:
             # For 2DOF robot, size of a is 5, Y is 2-by-5
@@ -115,6 +120,8 @@ class AdaptiveController( Controller ):
         """
             Setting the trajectory of the simulation
         """
+
+
 
         if   self.type == 1:   # Planned in Joint Space Coordinate
             self.func_qd   = trajectory
@@ -227,10 +234,9 @@ class AdaptiveController( Controller ):
             s    = dq - self.dqr
 
 
-        if self.n_act == 2:
+        ddqr, dqr = self.ddqr, self.dqr
 
-            ddqr = self.ddqr
-            dqr  = self.dqr
+        if self.n_act == 2:     # For 2D Model Case
 
             self.Y[ 0, 0 ] = ddqr[ 0 ]
             self.Y[ 0, 1 ] = ddqr[ 0 ] + ddqr[ 1 ]
@@ -245,10 +251,7 @@ class AdaptiveController( Controller ):
             self.Y[ 1, 4 ] = np.sin( q[0] + q[1] )
 
 
-        elif self.n_act == 4:
-
-            ddqr = self.ddqr
-            dqr  = self.dqr
+        elif self.n_act == 4:   # For 3D Model Case
 
             tmpY1 = 2*dqr[0]*np.cos(q[1])**2*np.cos(q[3])*np.sin(q[3])*dq[3] + dqr[1]*np.cos(q[2])*np.cos(q[3])**2*np.sin(q[1])*dq[3] + dqr[3]*np.cos(q[2])*np.cos(q[3])**2*np.sin(q[1])*dq[1] - 2*dqr[3]*np.cos(q[1])**2*np.cos(q[3])*np.sin(q[3])*dq[0] - dqr[2]*np.cos(q[1])*np.cos(q[3])**2*np.sin(q[2])*dq[3] - dqr[3]*np.cos(q[1])*np.cos(q[3])**2*np.sin(q[2])*dq[2] + 2*dqr[0]*np.cos(q[1])*np.cos(q[3])**2*np.sin(q[1])*np.sin(q[2])*dq[3] + 2*dqr[0]*np.cos(q[1])**2*np.cos(q[3])*np.sin(q[2])*np.sin(q[3])*dq[1] - dqr[1]*np.cos(q[2])*np.cos(q[3])**2*np.sin(q[1])*np.sin(q[2])*dq[1] + 2*dqr[1]*np.cos(q[1])**2*np.cos(q[3])*np.sin(q[2])*np.sin(q[3])*dq[0] + 2*dqr[3]*np.cos(q[1])*np.cos(q[3])**2*np.sin(q[1])*np.sin(q[2])*dq[0] + 2*ddqr[0]*np.cos(q[1])*np.cos(q[3])*np.sin(q[1])*np.sin(q[2])*np.sin(q[3]) + dqr[0]*np.cos(q[1])*np.cos(q[2])**2*np.cos(q[3])**2*np.sin(q[1])*dq[1] + dqr[1]*np.cos(q[1])*np.cos(q[2])**2*np.cos(q[3])**2*np.sin(q[1])*dq[0] + dqr[0]*np.cos(q[1])**2*np.cos(q[2])*np.cos(q[3])**2*np.sin(q[2])*dq[2] + dqr[2]*np.cos(q[1])**2*np.cos(q[2])*np.cos(q[3])**2*np.sin(q[2])*dq[0] + dqr[0]*np.cos(q[1])**2*np.cos(q[2])**2*np.cos(q[3])*np.sin(q[3])*dq[3] + dqr[3]*np.cos(q[1])**2*np.cos(q[2])**2*np.cos(q[3])*np.sin(q[3])*dq[0] + dqr[1]*np.cos(q[1])*np.cos(q[2])*np.cos(q[3])*np.sin(q[3])*dq[1] - dqr[2]*np.cos(q[1])*np.cos(q[2])*np.cos(q[3])*np.sin(q[3])*dq[2] + dqr[0]*np.cos(q[1])*np.cos(q[2])*np.cos(q[3])*np.sin(q[1])*np.sin(q[3])*dq[2] + dqr[2]*np.cos(q[1])*np.cos(q[2])*np.cos(q[3])*np.sin(q[1])*np.sin(q[3])*dq[0] - dqr[1]*np.cos(q[1])*np.cos(q[2])*np.cos(q[3])*np.sin(q[2])*np.sin(q[3])*dq[3] - dqr[3]*np.cos(q[1])*np.cos(q[2])*np.cos(q[3])*np.sin(q[2])*np.sin(q[3])*dq[1]
 
