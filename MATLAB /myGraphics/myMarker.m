@@ -21,15 +21,22 @@ classdef myMarker < handle
 
 
     properties ( SetAccess = public )
-        name
-        xdata
+        name                % Name of this graphic object                  (e.g.) marker_1, SH
+        func                % Function handle for calling this function, which is scatter3
+        
+                            % x,y,z position data of the marker
+        xdata              
         ydata
         zdata
-        N
+        
+        N                   % Number of data points, simply length( xdata )
+        
+        % Graphic attributes
         markerColor
         markerSize
         markerStyle
         markerAlpha
+        
     end
     
     methods
@@ -45,9 +52,11 @@ classdef myMarker < handle
                 error( "Wrong size, x: %d, y: %d, z:%d ", length( xdata ), length( ydata ), length( zdata ) ) 
             end
 
+            
             obj.xdata = xdata;
             obj.ydata = ydata; 
             obj.zdata = zdata;
+            
             obj.N     = length( xdata );
 
             % Parsing the arguments
@@ -59,6 +68,8 @@ classdef myMarker < handle
             obj.markerAlpha = r.markerAlpha;
             
         end
+        
+        
         
 
     end

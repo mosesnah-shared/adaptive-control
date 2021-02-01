@@ -22,10 +22,10 @@ c  = myColor();
 %% -- (1A) Set the 2DOF Robot
 
 % To use the 2DOF robot, use the following line
-robot = my2DOFRobot( );     
+% robot = my2DOFRobot( );     
 
 % To use the 4DOF robot, use the following line
-% robot = my4DOFRobot( );     
+robot = my4DOFRobot( );     
 
 robot.initialize( );
 
@@ -47,11 +47,11 @@ oldS = [ string( [ robot.q, robot.dq, robot.dqr, robot.ddqr, robot.M, robot.L, r
 % newS: python Style print
 str1 = [ "q"; "dq"; "dqr"; "ddqr" ];                                       
 str2 = "[" + string( ( 0 : robot.nDOF - 1 ) ) + "]";                       % Generating the string array, from 1 ~ nDOF                                                                       
-str3 = [ "M"; "Lc"; "L" ];                                       
+str3 = [ "M"; "L"; "Lc" ];                                       
 str4 = "[" + string( ( 0 : 1 ) ) + "]";                                    % Generating the string array, from 1 ~ nDOF                                                                       
 
-newS = [ reshape(  append( str1, str2 ), 1, [] ), ...
-         reshape(  append( str3, str4 ), 1, [] ), "np.sin", "np.cos", "**2" ];  % Making the mixture of strings for convertion
+newS = [ reshape(  append( str1, str2 )', 1, [] ), ...
+         reshape(  append( str3, str4 )', 1, [] ), "np.sin", "np.cos", "**2" ];  % Making the mixture of strings for convertion
 
 for i = 1 : length( oldS )
     tmpY = strrep( tmpY, oldS{ i }, newS{ i } );                           % Replacing 

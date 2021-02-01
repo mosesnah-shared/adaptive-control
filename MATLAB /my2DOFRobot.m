@@ -225,7 +225,7 @@ classdef my2DOFRobot < handle
                     tmp2( j ) = str2sym( var_str );                        % store the variable in the array
                 end
                 
-                obj.( tmp{ i } ) = tmp2;                                   % Replacement
+                obj.( tmp{ i } ) = tmp2;                                   % Replacement of q (sym) to q(t) (symfunc)
                 
             end
             
@@ -237,20 +237,31 @@ classdef my2DOFRobot < handle
             obj.M   = sym( 'M' ,[1,2], 'positive' );                       % Mass   of limb segment
             obj.I   = [ I1xx, I1yy, I1zz; ...
                         I2xx, I2yy, I2zz];                                 % Inertia w.r.t. C.o.M.
-               
+           
+            % Initializing/seeting the frames' SE(3) matrices 
+            obj.setFrameSE3(  )                         
+                    
         end
         
-        function [M, C, G] = deriveManipulatorEquation( obj )
-            % Derive the manipulator equation:
-            % tau = Mq'' + Cq' + G
-            
+        function setFrameSE3( obj )
+            % Setting the SE(3) information of the frames. 
+            % THIS PROCESS IS NECESSARY FOR ALL CALCULATION
             % Defining the se(3) matrix for each coordinate transformation        
+            % For details of the frame coordinate information, please refer to the following paper 
+            % [REF] Nah, Moses C. Dynamic primitives facilitate manipulating a whip. Diss. Massachusetts Institute of Technology, 2020.
+            % Fig. 3.4.
             T01 = obj.se3( -obj.q( 1 ), zeros( 3, 1 )         , @roty );           
             T12 = obj.se3( -obj.q( 2 ), [ 0; 0; -obj.L( 1 ) ] , @roty );
             
             % [WARNING!!!]
             % We need to fill in the T_arr before we conduct .getM, .getC and .getG methods
-            obj.T_arr = { T01, T01 * T12 };
+            obj.T_arr = { T01, T01 * T12 };                                % This is the T array (SE(3) matrix) for the "frame" coordinate. For finding the C.O.M. frame we need additional process.
+            
+        end    
+            
+        function [M, C, G] = deriveManipulatorEquation( obj )
+            % Derive the manipulator equation:
+            % tau = Mq'' + Cq' + G
             
             M = obj.getM( );
             C = obj.getC( );
@@ -292,7 +303,7 @@ classdef my2DOFRobot < handle
 
                 % obj.idx_limb returns the frame number (or the number of Tarr ) which corresponds to the i-th limb segment.
                 % tmp corresponds to the se(3) matrix for the C.O.M. of each limb segments. 
-                %                                                                   IGNORE! rotz is just a dummy function parameter, 
+                %                                                                   IGNORE! rotz is just a dummy function parameter, since q is 0
                 tmp = obj.T_arr{ obj.idx_limb( i ) } * obj.se3( 0, [ 0; 0; -obj.Lc( i ) ], @rotz );
                 
                 % Calculation of body velocity is necessary for getting the generalized mass matrix
@@ -400,7 +411,7 @@ classdef my2DOFRobot < handle
             % All the possible forms of the a vector is as follows:
             % M * Lc * L, M * L^2, M * Lc^2, M * g * L, M * g * Lc
             % This can simply done with the kronecker multiplication
-            avec = [ reshape( obj.I, 1, [ ] ),                                    ...   Flatten the I matrix, 
+            avec = [ reshape( obj.I, 1, [ ] ),                                      ...   Flatten the I matrix, 
                      kron( obj.M,   kron( [ obj.L, obj.Lc ], [ obj.L, obj.Lc ] ) ), ...   Calculating everything with M * Lc * L, M * L^2, M * Lc^2
                      kron( obj.g * obj.M, [ obj.L, obj.Lc  ] ) ];
 
