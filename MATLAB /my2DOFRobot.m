@@ -203,7 +203,6 @@ classdef my2DOFRobot < handle
             
             obj.idx_limb = [ 1, 2 ];                                               
             
-            obj.r = myParser( varargin );
             
         end
         

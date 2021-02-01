@@ -1,4 +1,4 @@
-classdef my3DAnimation < handle
+classdef myAnimation < handle
 %
 %  my3DAnimation class for setting up the 3D animation with the input data.
 % 
@@ -16,7 +16,7 @@ classdef my3DAnimation < handle
 
 % % =============================================================== %
 %   [REFERENCES]
-%   my3DAnimation class for setting up the 3D animation with the input data.
+%   myAnimation class for setting up the 3D animation with the input data.
 % 
 % % =============================================================== %
 
@@ -70,50 +70,29 @@ classdef my3DAnimation < handle
         hTitle  = []            % The  title of the whole figure.
 
                                 % [The handle of the axes]
-          % The list of axes, 1,2,3 is ordered as main, side1, side2
-        hAxes     = {     gobjects(0),     gobjects(0),       gobjects(0) };
-          
-          
-        hMarkers   = {     gobjects(0),     gobjects(0),       gobjects(0) };
-        markers    = {  myMarker.empty,  myMarker.empty,    myMarker.empty };        
+        % The list of axes, 1,2,3 is ordered as main, side1, side2
+        hAxes        = {        gobjects(0),       gobjects(0),       gobjects(0) };
+        hGraphicObjs = {        gobjects(0),       gobjects(0),       gobjects(0) };
+        graphicObjs  = {   myGraphics.empty,  myGraphics.empty,  myGraphics.empty };    
 
-        hLines     = {     gobjects(0),     gobjects(0),       gobjects(0) };
-        lines      = {    myLine.empty,    myLine.empty,      myLine.empty };                                     
-        
-        hpLines    = {     gobjects(0),     gobjects(0),       gobjects(0) }; % Lines for "Plots", which are static.
-        pLines     = {  my2DLine.empty,  my2DLine.empty,    my2DLine.empty }; % Lines for "Plots", which are static.         
-        
-        hEllipses  = {     gobjects(0),     gobjects(0),       gobjects(0) };
-        ellipses   = { myEllipse.empty, myEllipse.empty,  myEllipse.empty  };
-        
-        hArrows    = {     gobjects(0),     gobjects(0),       gobjects(0) };
-        arrows     = {   myArrow.empty,   myArrow.empty,    myArrow.empty  };
-        
         isZoomed   = [           false,          false,               false]; % Check whether the plot is a zoomed-plot or not
         zoomIdx; zoomSize;
     end
     
     methods
                 
-        function obj = my3DAnimation( tStep, markers, varargin )
+        function obj = myAnimation( tStep, gObjs, varargin )
             %[CONSTRUCTOR #1] Construct an instance of this class
             %   (1) tVec [sec]
             %       -  The time vector of the simulation
-            %   (2) markers [marker array] 
+            %   (2) gObjs [graphic objects cell array] 
             %       -  The class array of "myMarker" class. 
-            
-            % [Quick Sanity Check] Check the size between the data and time vec    
-            
-            for m = markers
-                if ( m.N ~= markers( 1 ).N  )
-                    error( "Wrong size [Name: %s] %d != %d " ,m.name, m.N, marker( 1 ).N )
-                end
-            end
+  
                         
             % If the size of the data are all the same.
             % Setting the default time step and its corresponding time vector.
             obj.tStep = tStep;
-            obj.tVec  = tStep * (0 : m.N-1);   % Taking out 1 to match the size of data        
+            obj.tVec  = tStep * (0 : length( gObjs( 1 ).XData ) - 1 );     % Taking out 1 to match the size of data        
             
             % Setting the default figure and Axes for the plot
             obj.hFigure     = figure();
@@ -121,14 +100,8 @@ classdef my3DAnimation < handle
             obj.hTitle      = title( obj.hAxes{ 1 }, sprintf( '[Time] %5.3f (s)', obj.tVec( 1 ) ) );
             hold( obj.hAxes{ 1 },'on' ); axis( obj.hAxes{ 1 } , 'equal' )             
 
-            tmpN = length( markers );                                      % Getting the length of the markers
-            % Plotting the Markers 
-
-            for i = 1 : tmpN
-                
-                m = markers( i );
-                obj.addGraphicObject( 1, m )
-                              
+            for g = gObjs
+                obj.addGraphicObject( 1, g )                              
             end
                         
         end
@@ -164,84 +137,20 @@ classdef my3DAnimation < handle
              %   (2) myGraphics [marker array] 
              %       -  The graphics class that we are aimed to add
              %       -  Type of Graphic Objects
-             %          (a) Ellipse
-             %          (b) Vector
+             %          (a) myMarkers
+             %          (b) myLines
              %          (c) myArrow             
              %    (3) varagin
              %     - [TO BE ADDED]             
 
-            obj.adjustFigures( idx )         % Change the configuration of the plots if side plots are not drawn
-            h2Draw = obj.hAxes{ idx };       % Getting the axes to do the plot
+            obj.adjustFigures( idx )                                       % Change the configuration of the plots if side plots are not drawn
+            h2Draw = obj.hAxes{ idx };                                     % Getting the axes to do the plot
             
-            if     isa( myGraphics , 'myArrow' )
+            for g = myGraphics
+                h = g.create( h2Draw );                                    % Passing the axis that the object should be drawn.
                 
-                for g = myGraphics
-                   arrow = quiver3( g.orig( 1,1 ), g.orig( 2,1 ), g.orig( 3,1 ), ...
-                                           g.x(1),        g.y(1),        g.z(1), ...
-                                                               'parent', h2Draw, ...
-                                                      'linewidth', g.arrowWidth, ...
-                                                          'color', g.arrowColor, ...
-                                                    'MaxheadSize', g.arrowHeadSize );
-                 
-                     obj.hArrows{ idx }( end + 1 ) = arrow;       
-                      obj.arrows{ idx }( end + 1 ) = g;
-                end    
-                      
-            elseif isa( myGraphics , 'myEllipse' )
-                
-                for g = myGraphics                      
-                      ellipse = mesh( g.xmesh(:,:,1), g.ymesh(:,:,1), g.zmesh(:,:,1), ...
-                                       'parent', h2Draw, 'facealpha', g.faceAlpha );
-
-                     obj.hEllipses{ idx }( end + 1 ) = ellipse;       
-                      obj.ellipses{ idx }( end + 1 ) = g;                               
-                end  
-                
-            elseif isa( myGraphics, 'myMarker' )
-                
-                for g = myGraphics                      
-
-                    % If size is correct, add the markers to the plot
-                        marker = scatter3( g.xdata( 1 ), g.ydata( 1 ), g.zdata( 1 ), g.markerSize * 8 , ...
-                                                                'parent', h2Draw,  ...
-                                                        'Marker',  g.markerStyle,  ...
-                                                     'LineWidth',  g.markerSize/3, ...   
-                                               'MarkerEdgeColor',  g.markerColor,  ...
-                                               'MarkerEdgeAlpha',  g.markerAlpha,  ...
-                                               'MarkerFaceAlpha',  g.markerAlpha,  ...
-                                               'MarkerFaceColor',  [1,1,1]  ); 
-
-                        obj.hMarkers{ idx }( end + 1 ) = marker;
-                         obj.markers{ idx }( end + 1 ) = g; 
-                end
-                
-            elseif isa( myGraphics, 'myLine' )
-                
-                 for g = myGraphics                      
-
-                    line = plot3( g.x(:,1), g.y(:,1), g.z(:,1), ...
-                                              'parent', h2Draw, ...
-                                      'lineWidth', g.lineWidth, ...
-                                          'color', g.lineColor, ...                           
-                                      'lineStyle', g.lineStyle );
-
-                        obj.hLines{ idx }( end + 1 ) = line;
-                         obj.lines{ idx }( end + 1 ) = g; 
-                 end    
-
-            elseif isa( myGraphics, 'my2DLine' )
-                
-                 for g = myGraphics                      
-
-                    line = plot( g.x, g.y, 'parent', h2Draw, ...
-                                   'lineWidth', g.lineWidth, ...
-                                       'color', g.lineColor, ...                           
-                                   'lineStyle', g.lineStyle );
- 
-                        obj.hpLines{ idx }( end + 1 ) = line;
-                         obj.pLines{ idx }( end + 1 ) = g; 
-                 end                     
-                 
+                obj.hGraphicObjs{ idx }( end + 1 ) = h;                    % Appending the handle of the graphic objects 
+                 obj.graphicObjs{ idx }( end + 1 ) = g;                    % Appending the graphic objects                 
             end
             
         end
@@ -252,7 +161,7 @@ classdef my3DAnimation < handle
             % [INPUTS]
             %   (1) idx [integer]
             %       -  The plot that are aimed to 
-            %   (1) whichMarkers (string/index) List
+            %   (1) whichMarkers (string) List
             %       - the index or the name of the markers that are aimed to be connected
             %   (2) varargin
             %       - [TO BE ADDED]              
@@ -266,41 +175,19 @@ classdef my3DAnimation < handle
             tmpx = zeros( N, length( obj.tVec) ); 
             tmpy = tmpx; 
             tmpz = tmpx;
-            
-            if     isstring( whichMarkers )     % If markers info. are given as strings
-                
-                tmp = [ obj.markers{ idx }.name ];
+                            
+            tmp = [ obj.graphicObjs{ idx }.name ];
 
-                for i = 1 : N
-                    tmpi = find( strcmp( tmp, whichMarkers( i ) ) );       % Getting the index of the marker which matches the string name
+            for i = 1 : N
+                tmpi = find( strcmp( tmp, whichMarkers( i ) ) );       % Getting the index of the marker which matches the string name
                     
-                    tmpx( i,: ) = obj.markers{ idx }( tmpi ).xdata;
-                    tmpy( i,: ) = obj.markers{ idx }( tmpi ).ydata;
-                    tmpz( i,: ) = obj.markers{ idx }( tmpi ).zdata;                    
+                tmpx( i,: ) = obj.graphicObjs{ idx }( tmpi ).XData;
+                tmpy( i,: ) = obj.graphicObjs{ idx }( tmpi ).YData;
+                tmpz( i,: ) = obj.graphicObjs{ idx }( tmpi ).ZData;                    
                     
-                end
-                
-            elseif isnumeric( whichMarkers )                               % If markers info. are given as integer array 
-                     
-                for i = 1 : N
-                    
-                    tmpx( i,: ) = obj.markers{ idx }( whichMarkers( i ) ).xdata;
-                    tmpy( i,: ) = obj.markers{ idx }( whichMarkers( i ) ).ydata;
-                    tmpz( i,: ) = obj.markers{ idx }( whichMarkers( i ) ).zdata;                    
-                    
-                end
-                
-            else
-                error( "Wrong input, argument should be array of strings or integers" ) 
             end
-            
 
-            r = myParser( varargin );   
-
-            line = myLine( tmpx, tmpy, tmpz, 'lineStyle', r.lineStyle, ...
-                                             'lineColor', r.lineColor, ...
-                                             'lineWidth', r.lineWidth );
-            
+            line = myLine( 'XData', tmpx, 'YData', tmpy, 'ZData', tmpz, varargin{ : } );
             obj.addGraphicObject( idx, line );
                                          
         end        
@@ -373,81 +260,31 @@ classdef my3DAnimation < handle
             % Go to the step of the following idx. 
             set( obj.hTitle,'String', sprintf( '[Time] %5.3f (s)  x%2.1f', obj.tVec( idx ),  obj.vidRate  ) )
         
-                  % Update Markers
-            for i = 1 : length( obj.hMarkers )
+            % Update Graphics
+            % We'll assume that all graphics are 3D, since we can just see in the 2D plane for 2D plot
+            for i = 1 : length( obj.hAxes )
                
-                if isempty( obj.hMarkers{ i } )
+                if isempty( obj.hGraphicObjs{ i } )
                     continue     % Go to next iteration
                 end
                 
-                for j = 1 : length( obj.hMarkers{ i } )
+                for j = 1 : length( obj.hGraphicObjs{ i } )                % Iterating along each graphs.
                     
-                    set( obj.hMarkers{ i }( j ), 'XData', obj.markers{ i }( j ).xdata( idx ), ...
-                                                 'YData', obj.markers{ i }( j ).ydata( idx ), ...
-                                                 'ZData', obj.markers{ i }( j ).zdata( idx )   )
+                    for attr = obj.graphicObjs{ i }( j ).gAttrUpdateList   % Getting the list of values that should be updated
+                        set( obj.hGraphicObjs{ i }( j ), attr, obj.graphicObjs{ i }( j ).( attr )( :, idx ) );
+                    end
                     
                 end
                  
             end
-            
-            % Update Ellipse            
-            for i = 1 : length( obj.hEllipses )
-               
-                if isempty( obj.hEllipses{ i } )
-                    continue     % Go to next iteration
-                end
-                
-                for j = 1 : length( obj.hEllipses{ i } )
-                    set( obj.hEllipses{ i }( j ), 'XData', obj.ellipses{ i }( j ).xmesh( :, :, idx  ), ...
-                                                  'YData', obj.ellipses{ i }( j ).ymesh( :, :, idx  ), ...
-                                                  'ZData', obj.ellipses{ i }( j ).zmesh( :, :, idx  ) )
-                    
-                end
-                 
-            end            
-            
-            % Update Lines            
-            for i = 1 : length( obj.hLines )
-               
-                if isempty( obj.hLines{ i } )
-                    continue     % Go to next iteration
-                end
-                
-                for j = 1 : length( obj.hLines{ i } )
-                    set( obj.hLines{ i }( j ), 'XData', obj.lines{ i }( j ).x( :, idx ), ...
-                                               'YData', obj.lines{ i }( j ).y( :, idx ), ...
-                                               'ZData', obj.lines{ i }( j ).z( :, idx )  )
-                    
-                end
-                 
-            end
-            
-            % Update Arrows            
-            for i = 1 : length( obj.hArrows )
-               
-                if isempty( obj.hArrows{ i } )
-                    continue     % Go to next iteration
-                end
-                
-                for j = 1 : length( obj.hArrows{ i } )
-                    set( obj.hArrows{ i }( j ), 'XData', obj.arrows{ i }( j ).orig( 1, idx ), ...
-                                                'YData', obj.arrows{ i }( j ).orig( 2, idx ), ...
-                                                'ZData', obj.arrows{ i }( j ).orig( 3, idx ), ...
-                                                'UData', obj.arrows{ i }( j ).x( idx ), ...
-                                                'VData', obj.arrows{ i }( j ).y( idx ), ...
-                                                'WData', obj.arrows{ i }( j ).z( idx )   )
-                    
-                end
-                 
-            end
+           
             
             % Update the zoomed-in view's xlim, ylim and zlim
-            
             iidx = find( obj.isZoomed );  % Find the index that should be changed. 
             if iidx ~= 0
-                set( obj.hAxes{ iidx },  'XLim',  [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).xdata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).xdata( idx ) ] , ...         
-                                         'YLim',   [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).ydata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).ydata( idx ) ] , ...    
-                                         'ZLim',   [ -obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).zdata( idx ), obj.zoomSize + obj.markers{ iidx }( obj.zoomIdx ).zdata( idx ) ] )  
+                set( obj.hAxes{ iidx },  'XLim',  [ -obj.zoomSize + obj.graphicObjs{ iidx }( obj.zoomIdx ).XData( idx ), obj.zoomSize + obj.graphicObjs{ iidx }( obj.zoomIdx ).XData( idx ) ] , ...         
+                                         'YLim',  [ -obj.zoomSize + obj.graphicObjs{ iidx }( obj.zoomIdx ).YData( idx ), obj.zoomSize + obj.graphicObjs{ iidx }( obj.zoomIdx ).YData( idx ) ] , ...    
+                                         'ZLim',  [ -obj.zoomSize + obj.graphicObjs{ iidx }( obj.zoomIdx ).ZData( idx ), obj.zoomSize + obj.graphicObjs{ iidx }( obj.zoomIdx ).ZData( idx ) ] )  
             end
            
         end
@@ -481,17 +318,14 @@ classdef my3DAnimation < handle
             %       -  The size of the zoom-in window.
             
             obj.adjustFigures( idx )         
-
-            if     isstring( whichMarker )     % If markers info. are given as strings
-                
-                idxM = find( strcmp( [ obj.markers{ 1 }.name ], whichMarker ) );   
-                
-            elseif isnumeric( whichMarker )    
-                
-                idxM = whichMarker; 
-                
-            end
             
+            for i = 1 : length( obj.graphicObjs{ 1 } )
+                
+                if  strcmp( obj.graphicObjs{ 1 }(i).name, whichMarker )
+                   idxM = i; 
+                end
+            end
+                
             % Copy the graphic objects from main to the plot
             obj.isZoomed( idx ) = true;
             obj.zoomIdx  = idxM; 
@@ -499,15 +333,8 @@ classdef my3DAnimation < handle
             
             % Copy and overwrite all the graphic objects from main to side plot
             % Need to use "copyobj" for the plot
-            obj.hArrows{   idx } = copyobj( obj.hArrows{   1 }, obj.hAxes{ idx } );
-            obj.hEllipses{ idx } = copyobj( obj.hEllipses{ 1 }, obj.hAxes{ idx } );
-            obj.hMarkers{  idx } = copyobj( obj.hMarkers{  1 }, obj.hAxes{ idx } );
-            obj.hLines{    idx } = copyobj( obj.hLines{    1 }, obj.hAxes{ idx } );    
-            
-            obj.arrows{   idx }  = obj.arrows{   1 };
-            obj.ellipses{ idx }  = obj.ellipses{ 1 };
-            obj.markers{  idx }  = obj.markers{  1 };
-            obj.lines{    idx }  = obj.lines{    1 };             
+            obj.hGraphicObjs{ idx } = copyobj( obj.hGraphicObjs{ 1 }, obj.hAxes{ idx } );             
+            obj.graphicObjs{  idx } = obj.graphicObjs{ 1 };
             
             
         end
