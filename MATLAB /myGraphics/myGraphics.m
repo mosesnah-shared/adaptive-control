@@ -1,9 +1,10 @@
-classdef myGraphics < handle
+classdef myGraphics < handle & matlab.mixin.Heterogeneous
 % % =============================================================== %
 %   [DESCRIPTION]
 %
 %       Defining the primitive (parent) myGraphics class for my graphics objects.
-%
+%       Using matlab.mixin.Heterogeneous for using "myGraphics" as an object array.
+%       [REF]https://www.mathworks.com/help/matlab/matlab_oop/subclassing-multiple-classes.html
 %
 % % =============================================================== %
 %   [CREATED BY]  Moses Nah
@@ -19,7 +20,7 @@ classdef myGraphics < handle
 
 
     properties ( SetAccess = public )
-        
+      
         
     end
     

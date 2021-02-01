@@ -1,7 +1,6 @@
-classdef myMarker < handle
+classdef myMarker < myGraphics 
 % % =============================================================== %
 %   [DESCRIPTION]
-%
 %       myMarker class for defining a single marker in the plot
 %
 %
@@ -13,65 +12,77 @@ classdef myMarker < handle
 % % =============================================================== %
     
     properties ( SetAccess = private )
-        % [1] Interal Function to check the size
-        isSizeSame = @( x,y,z ) ( ( length( x ) == length( y ) ) && ...
-                                    length( x ) == length( z ) );          
 
     end
 
 
     properties ( SetAccess = public )
-        name                % Name of this graphic object                  (e.g.) marker_1, SH
-        func                % Function handle for calling this function, which is scatter3
         
-                            % x,y,z position data of the marker
-        xdata              
-        ydata
-        zdata
+        % [Properties]
+        %   - The variables should match the name with the "scatter" function attributes 
+        name  = "g" + num2str( randi ( 2^20 ) );                           % Randomizing the name of this marker
+        hfunc                                                              % The function handle for this graphic object.                
         
-        N                   % Number of data points, simply length( xdata )
-        
+        % x,y,z position data of the marker
+        XData
+        YData
+        ZData
+                
         % Graphic attributes
-        markerColor
-        markerSize
-        markerStyle
-        markerAlpha
+        % Whole list of the graphic attributes, useful when we set the attributes and its values.
+        gAttrList  = [ "LineWidth", "SizeData", "Marker", "MarkerFaceColor", ...
+                       "MarkerEdgeColor", "MarkerFaceAlpha", "MarkerEdgeAlpha" ]; 
+                   
+        % List of the graphic attributes that is updated for each time step.
+        % Usually, the position datas should be updated
+        gAttrUpdateList  = [ "XData", "YData", "ZData" ];                    
+        
+                   
+        LineWidth       = 2;
+        SizeData        = 625;
+        Marker          = 'o';
+        MarkerFaceColor = [1,      1,      1 ];
+        MarkerEdgeColor = [0, 0.4470, 0.7410 ];
+        MarkerFaceAlpha = 1;
+        MarkerEdgeAlpha = 1;
         
     end
     
     methods
 
-        function obj = myMarker( xdata, ydata, zdata, varargin )
+        function obj = myMarker( varargin )
             % Construct an instance of the marker class
             % [Inputs Arguments]
-            %       xdata: The x cartesian position data, 1 x N row vector
-            %       ydata: The y cartesian position data, 1 x N row vector
-            %       zdata: The z cartesian position data, 1 x N row vector
+            %       varargin: The varargin should always get the value in 'key', 'val' pairs./
+            %        example: 'name', '123', 'XData', [1,3], 'YData', [3,2]
             
-            if ( ~obj.isSizeSame( xdata, ydata, zdata ) )
-                error( "Wrong size, x: %d, y: %d, z:%d ", length( xdata ), length( ydata ), length( zdata ) ) 
-            end
-
+            obj.setAttr( varargin{ : } )                                   % The initialize function is defined under "myGraphics.m" file.
             
-            obj.xdata = xdata;
-            obj.ydata = ydata; 
-            obj.zdata = zdata;
-            
-            obj.N     = length( xdata );
-
-            % Parsing the arguments
-            r = myParser( varargin );                
-            obj.name  = r.name;
-            obj.markerSize  = r.markerSize;
-            obj.markerStyle = r.markerStyle;
-            obj.markerColor = r.markerColor;
-            obj.markerAlpha = r.markerAlpha;
             
         end
         
-        
-        
+        function h = create( obj, hplot )
+            % Creating the primitive object,
+            % After calling this, we can set the graphical details.
+            % Once this is created, we cannot change 2D to 3D, but 3D to 2D is still possible.
+            if isempty( obj.ZData )
 
+               h = scatter(   obj.XData( 1 ), obj.YData( 1 ), 'parent', hplot );
+
+            else   
+               
+               h = scatter3(  obj.XData( 1 ), obj.YData( 1 ), obj.ZData( 1 ), 'parent', hplot );                
+                
+            end            
+            
+            % Setting the detailed graphical colors 
+            for attr = obj.gAttrList 
+                set( h, attr, obj.( attr ) );
+            end
+            
+        end
+                
+ 
     end
 end
 
