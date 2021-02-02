@@ -124,6 +124,21 @@ class Simulation( ):
 
         self.controller = controller_name
 
+
+    def set_initial_condition( self ):
+        """
+            Manually setting the initial condition of the system.
+        """
+
+        if "_w_" in self.model_name:                                            # If whip is attached to the model.
+            tmp = self.mjData.get_body_xquat( "node1" )                         # Getting the quaternion angle of the whip handle
+
+            yaw, pitch, roll = quaternion2euler( tmp )
+            self.mjData.qpos[ self.n_acts     ] = - roll                        # Setting the handle posture to make the whip being straight down at equilibrium.
+            self.mjData.qpos[ self.n_acts + 1 ] = + pitch                       # Setting the handle posture to make the whip being straight down at equilibrium.
+            self.mjSim.forward()                                                # Running the forward kinematics, or setting the model as the given qpos WITHOUT proceeding the time step. Therefore no simulation time step is executed.
+
+
     def run( self ):
         """
             Running a single simulation.
@@ -163,6 +178,9 @@ class Simulation( ):
             self.mjViewer.cam.elevation     = tmp[ 4 ]
             self.mjViewer.cam.azimuth       = tmp[ 5 ]
 
+        self.set_initial_condition( )                                           # Setting initial condition. Some specific controllers need to specify the initial condition
+
+
         while self.current_time <= self.run_time:
 
             if self.sim_step % self.update_rate == 0:
@@ -171,7 +189,6 @@ class Simulation( ):
                     self.mjViewer.render( )                                     # Render the simulation
 
                 my_print( currentTime = self.current_time,
-                      trajectoryError = self.controller.xd[ : ] - self.mjData.get_geom_xpos( "EEGEOM" ) if self.controller.type == 2 else self.controller.qd[ : ] - self.mjData.qpos[ : ],
                                     a = self.controller.a      )
 
                 if self.args[ 'verbose' ]:
@@ -185,10 +202,9 @@ class Simulation( ):
                     my_print( currentTime       = self.current_time,
                               jointAngleActual  = self.mjData.qpos[ : ],
                               geomXYZPositions  = self.mjData.geom_xpos[ self.idx_geom_names ],
-                              desiredTrajectory = self.controller.xd[ : ] if self.controller.type == 2 else self.controller.qd[ : ],
-                              trajectoryError   = self.controller.xd[ : ] - self.mjData.get_geom_xpos( "EEGEOM" ) if self.controller.type == 2 else self.controller.qd[ : ] - self.mjData.qpos[ : ],
+                              desiredTrajectory = self.controller.traj_pos[ : ],
+                              trajectoryError   = self.controller.traj_pos[ : ] - self.mjData.get_geom_xpos( "EEGEOM" ) if self.controller.type == 2 else self.controller.traj_pos[ : ] - self.mjData.qpos[ : ],
                               file              = file )
-
 
             # [input controller]
             # input_ref: The data array that are aimed to be inputted (e.g., qpos, qvel, qctrl etc.)
@@ -215,6 +231,8 @@ class Simulation( ):
 
 
             if self.sim_step % self.update_rate == 0:
+
+                my_print( trajectoryError   = self.controller.traj_pos[ : ] - self.mjData.get_geom_xpos( "EEGEOM" ) if self.controller.type == 2 else self.controller.traj_pos[ : ] - self.mjData.qpos[ : ],)
 
                 if self.args[ 'saveData' ]:
                     # Saving all the necessary datas for the simulation

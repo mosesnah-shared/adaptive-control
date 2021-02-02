@@ -88,6 +88,7 @@ Examples, try:
     python3 run.py --modelName="3D_model.xml" --simType=1 --saveData
     python3 run.py --modelName="3D_model.xml" --simType=2 --saveData --recordVideo --vidRate=0.5
     python3 run.py --modelName="3D_model.xml" --simType=2 --saveData --videoOFF
+    python3 run.py --modelName="3D_model_w_N25.xml" --simType=2 --videoOFF    
 
 """
 
@@ -241,8 +242,9 @@ def main( ):
 
 
     controller_object.set_trajectory( trajectory )
-    mySim.attach_controller( controller_object )
+    controller_object.add_NN( )
 
+    mySim.attach_controller( controller_object )
 
     mySim.run( )
 
