@@ -6,6 +6,9 @@ import time
 import pickle
 
 from modules.utils        import my_print
+from MLmodules.RBFN       import RBFN
+
+
 import matplotlib.pyplot as plt
 
 try:
@@ -95,6 +98,8 @@ class AdaptiveController( Controller ):
         self.t_sym = sp.symbols( 't' )                                          # time symbol of the equation, useful when defining the trajectory
 
 
+        self.NN = None                                                          # The neural network for compensation.
+
         # For the desired trajectory to be followed
         # Regardless of whether it is Cartesian Space/Joint Space tracking, we'll set the trajectory
         # self.traj_func_pos =
@@ -119,70 +124,50 @@ class AdaptiveController( Controller ):
     def set_trajectory( self, trajectory ):
         """
             Setting the trajectory of the simulation
+
+            The name of the variable is traj_pos, traj_vel, traj_acc, to make it agnostic to Cartesian/Joint Space
+
+            Prefix func is added to the variable to denote that the function is "lambda" function.
         """
 
+        self.func_traj_pos = trajectory
+        self.func_traj_vel = [ sp.diff( tmp, self.t_sym ) for tmp in self.func_traj_pos  ]
+        self.func_traj_acc = [ sp.diff( tmp, self.t_sym ) for tmp in self.func_traj_vel  ]
 
+        self.func_traj_pos = lambdify( self.t_sym, self.func_traj_pos )
+        self.func_traj_vel = lambdify( self.t_sym, self.func_traj_vel )
+        self.func_traj_acc = lambdify( self.t_sym, self.func_traj_acc )
 
-        if   self.type == 1:   # Planned in Joint Space Coordinate
-            self.func_qd   = trajectory
-            self.func_dqd  = [ sp.diff( tmp, self.t_sym ) for tmp in self.func_qd  ]
-            self.func_ddqd = [ sp.diff( tmp, self.t_sym ) for tmp in self.func_dqd ]
-
-            self.func_qd   = lambdify( self.t_sym, self.func_qd   )
-            self.func_dqd  = lambdify( self.t_sym, self.func_dqd  )
-            self.func_ddqd = lambdify( self.t_sym, self.func_ddqd )
-
-            # Get the initial position of the q vector
-            self.qd   =   self.func_qd( 0 )
-            self.dqd  =  self.func_dqd( 0 )
-            self.ddqd = self.func_ddqd( 0 )
-
-        elif self.type == 2:    # Planned in Cartesian Space Coordinate
-            self.func_xd   = trajectory
-            self.func_dxd  = [ sp.diff( tmp, self.t_sym ) for tmp in self.func_xd  ]
-            self.func_ddxd = [ sp.diff( tmp, self.t_sym ) for tmp in self.func_dxd ]
-
-            self.func_xd   = lambdify( self.t_sym, self.func_xd   )
-            self.func_dxd  = lambdify( self.t_sym, self.func_dxd  )
-            self.func_ddxd = lambdify( self.t_sym, self.func_ddxd )
-
-            # Get the initial position of the Cartesian Position
-            self.xd   =   self.func_xd( 0 )
-            self.dxd  =  self.func_dxd( 0 )
-            self.ddxd = self.func_ddxd( 0 )
+        # Get the initial position of the q vector
+        # self.traj_pos = self.func_traj_pos( 0 )
+        # self.traj_vel = self.func_traj_vel( 0 )
+        # self.traj_acc = self.func_traj_acc( 0 )
 
     def get_Y_and_s( self, q, dq, t ):
 
-        if  self.type == 1:
-            # If joint space tracking task
+        self.traj_pos = self.func_traj_pos( t )                                 # First saving the trajectory position
 
-            qd   = self.func_qd(   t )
-            dqd  = self.func_dqd(  t )
-            ddqd = self.func_ddqd( t )
+        if  self.type == 1:                                                     # If joint space tracking task
 
-            self.qd  =  qd
-            self.dqd = dqd
+            qd   = self.func_traj_pos( t )                                      # Just for simplification of the notation
+            dqd  = self.func_traj_vel( t )                                      # Just for simplification of the notation
+            ddqd = self.func_traj_acc( t )                                      # Just for simplification of the notation
 
             qtilde  = q -  qd
             dqtilde = dq - dqd
 
             self.Lgain = 20 * np.eye( self.n_act )
-            self.dqr    = dqd  - self.Lgain.dot( qtilde  )
-            self.ddqr   = ddqd - self.Lgain.dot( dqtilde )
+            self.dqr   = dqd  - self.Lgain.dot( qtilde  )
+            self.ddqr  = ddqd - self.Lgain.dot( dqtilde )
 
-            s = dq - self.dqr
-
+            self.s = dq - self.dqr                                                   # The sliding variable.
 
         elif self.type == 2:
             # If Cartesian space tracking task
 
-            xd   = self.func_xd(   t )
-            dxd  = self.func_dxd(  t )
-            ddxd = self.func_ddxd( t )
-
-            self.xd   =   xd
-            self.dxd  =  dxd
-            self.ddxd = ddxd
+            xd   = self.func_traj_pos( t )                                      # Just for simplification of the notation
+            dxd  = self.func_traj_vel( t )                                      # Just for simplification of the notation
+            ddxd = self.func_traj_acc( t )                                      # Just for simplification of the notation
 
             # The name of EEGEOM is crucial for this task
             # Hence for the xml file, do not change the name EEGEOM for the end-effector
@@ -192,6 +177,12 @@ class AdaptiveController( Controller ):
 
             xtilde  = xEE  -  xd
             dxtilde = dxEE - dxd
+
+
+            # [TODO] [Moses C. Nah] [2020.02.21]
+            # For this controller, the Jacobian matrix is exactly known, but it actually doesn't make sense
+            # since the adaptive controller doesn't know the geometrical details of the robot.
+            # Hence, adding the Jacobian parameters for the adaptive controller too.
 
             if self.J_new is None:
                 # If J_new is not initialized, then filling in with the jacobian
@@ -230,11 +221,11 @@ class AdaptiveController( Controller ):
             self.dqr  = Jinv.dot(  dxd -  self.Lgain.dot( xtilde   ) )
             self.ddqr = Jinv.dot( ddxd -  self.Lgain.dot( dxtilde  ) - dJ.dot( self.dqr ) )
 
-            # Defining the sliding variable
-            s    = dq - self.dqr
+
+            self.s    = dq - self.dqr                                                # Defining the sliding variable
 
 
-        ddqr, dqr = self.ddqr, self.dqr
+        ddqr, dqr = self.ddqr, self.dqr                                         # Just for notation simplification
 
         if self.n_act == 2:     # For 2D Model Case
 
@@ -342,16 +333,16 @@ class AdaptiveController( Controller ):
             self.Y[3, 10] = np.cos(q[0])*np.cos(q[1])*np.sin(q[3]) + np.cos(q[2])*np.cos(q[3])*np.sin(q[0]) - np.cos(q[0])*np.cos(q[3])*np.sin(q[1])*np.sin(q[2])
 
         tmpY = np.transpose( self.Y )
-        tmps = np.transpose( s      )
+        tmps = np.transpose( self.s )
 
         if   self.n_act == 2:
-            self.gamma = np.diag( [1,1,1,2000,2000] )
+            self.gamma = np.diag( [ 1,1,1, 2000, 2000 ] )
 
         elif self.n_act == 4:
             self.gamma = np.diag( [ 2.5,2.5, 2.5,2.5,2.5,2.5, 2.5, 2.5,2.5, 100, 100 ] )
 
         self.a += -self.dt * self.gamma.dot( np.transpose( tmpY.dot( tmps ) ) )
-        return self.Y, s
+        return self.Y, self.s
 
     def input_calc( self, start_time, current_time ):
         """
@@ -365,15 +356,30 @@ class AdaptiveController( Controller ):
 
         if   self.n_act == 2:
             self.kd = 200 * np.eye( self.n_act )
+
         elif self.n_act == 4:
             self.kd = 10  * np.eye( self.n_act )
 
         Y, s =  self.get_Y_and_s( q, dq, t0 )
 
+        if self.NN:
+            self.tau_d = self.NN.calc_activation( s )
+            self.NN.update_weight( s, self.dt )
+
+        else:
+            self.tau_d = np.zeros( self.n_act )
+
         self.tau =  Y.dot( np.transpose( self.a ) ) - self.kd.dot( np.transpose( s ) )
 
         return self.mjData.ctrl, self.idx_act, self.tau
 
+    def add_NN( self, type = "RBFNN" ):
+        """
+            Add a neural network to this controller
+        """
+
+        #  Number of hidden layers, number of actuators.
+        self.NN = RBFN(  self.n_act, 40,   self.n_act )
 
 if __name__ == "__main__":
     pass
