@@ -332,8 +332,8 @@ class AdaptiveController( Controller ):
 
             self.Y[3, 10] = np.cos(q[0])*np.cos(q[1])*np.sin(q[3]) + np.cos(q[2])*np.cos(q[3])*np.sin(q[0]) - np.cos(q[0])*np.cos(q[3])*np.sin(q[1])*np.sin(q[2])
 
-        tmpY = np.transpose( self.Y )
-        tmps = np.transpose( self.s )
+        tmpY = self.Y.T
+        tmps = self.s.T
 
         if   self.n_act == 2:
             self.gamma = np.diag( [ 1,1,1, 2000, 2000 ] )
@@ -341,7 +341,7 @@ class AdaptiveController( Controller ):
         elif self.n_act == 4:
             self.gamma = np.diag( [ 2.5,2.5, 2.5,2.5,2.5,2.5, 2.5, 2.5,2.5, 100, 100 ] )
 
-        self.a += -self.dt * self.gamma.dot( np.transpose( tmpY.dot( tmps ) ) )
+        self.a += -self.dt * self.gamma.dot( tmpY.dot( tmps ).T  )
         return self.Y, self.s
 
     def input_calc( self, start_time, current_time ):
@@ -369,7 +369,7 @@ class AdaptiveController( Controller ):
         else:
             self.tau_d = np.zeros( self.n_act )
 
-        self.tau =  Y.dot( np.transpose( self.a ) ) - self.kd.dot( np.transpose( s ) )
+        self.tau =  Y.dot( self.a.T ) - self.kd.dot( s.T )
 
         return self.mjData.ctrl, self.idx_act, self.tau
 
